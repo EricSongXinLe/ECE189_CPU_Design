@@ -1,4 +1,6 @@
-//synchronous fifo
+//synchronous fifo: the first data wrote in will be the first to read out
+//data wrote in will wrap around with one space between the start and the end
+
 module fifo #( 
     parameter type T = logic [31:0], 
     parameter DEPTH = 8 
@@ -16,7 +18,7 @@ logic [2:0] w_ptr, r_ptr;
 integer i;
 
 assign empty = (w_ptr == r_ptr);
-assign full = ((w_ptr + 3'd1) == r_ptr);
+assign full = ((w_ptr + 3'd1) == r_ptr); //wrap around logic
 
 always_ff @ (posedge clk) begin
     if (reset) begin
@@ -32,7 +34,7 @@ always_ff @ (posedge clk) begin
         read_data <= Arr[r_ptr];
         r_ptr <= r_ptr + 1;
     end
-    if (write_en && (!full || read_en)) begin
+    if (write_en && (!full || read_en)) begin // ||read_en: to prevent read and write happen the same cycle
         Arr[w_ptr] <= write_data;
         w_ptr <= w_ptr + 1;
 
@@ -41,7 +43,7 @@ end
 endmodule
 
 
-//circular buffer
+//circular buffer: alteration from FIFO: new data always get stored, even if it overwrites the old data (implemented before clarification)
 module c_buffer #( 
     parameter type T = logic [31:0], 
     parameter DEPTH = 8 
