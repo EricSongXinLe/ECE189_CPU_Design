@@ -30,19 +30,16 @@ module fetch(
     input logic ready,
     output logic valid,
     
-    output logic [31:0] pc_decode,
-    output logic [31:0] inst_decode
+    output logic [31:0] pc_decode, //to decode
+    output logic [31:0] inst_decode //to decode
     );
-logic [31:0] pc;
+
+logic [31:0] pc; //to icache
 logic [31:0] nextpc;
-
-logic [31:0] inst;
-
+logic [31:0] inst; //from icache
 logic hold;
+
 assign hold = stall || (valid && !ready);
-
-logic [31:0] icache [0:1023];
-
 
 always_comb begin   
     nextpc = pc + 32'd4;
@@ -58,27 +55,25 @@ always @(posedge clk) begin
     end
 end
 
-  
-assign inst = icache[pc[31:2]];
-
 always_ff @(posedge clk) begin
     if (rst) begin
       valid       <= 1'b0;
       pc_decode   <= '0;
       inst_decode <= '0;
-    end else if (hold) begin
-      // Hold outputs while sink is not ready
-      /*
-      valid       <= valid;
-      pc_decode   <= pc_decode;
-      inst_decode <= inst_decode; 
-      */
-    end else begin
+    end else if (!hold) begin
         valid <= 1'b1;
         pc_decode <= pc;
         inst_decode <= inst;
     end
-    
+    //else hold: do nothing, automatically retains previous values
 end
+
+icache icache0( //I/O with icache
+    //Output
+    .inst(inst),
+    //Input
+    .pc(pc),
+    .clk(clk)
+);
 
 endmodule
