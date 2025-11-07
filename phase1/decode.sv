@@ -68,9 +68,9 @@ module decode(
     input  logic [31:0] fe_pc,        // Input PC
     output logic        de_ready,       // We are ready for input
 
-    // Downstream Interface (to Execute)
+    // Downstream Interface (to Rename)
     output logic        de_valid,       // Our output is valid
-    input  logic        ex_ready,       // Next stage is ready for our output
+    input  logic        re_ready,       // Next stage is ready for our output
     output control_signals_t de_signals_out // Our decoded output signals
 );
 

@@ -6,12 +6,12 @@ module skid_buffer_struct #(
 
     // upstream (producer -> skid)
     input  logic valid_in,
-    output logic ready_in,
+    output logic ready_out,
     input  T     data_in,
 
     // downstream (skid -> consumer)
     output logic valid_out,
-    input  logic ready_out,
+    input  logic ready_in,
     output T     data_out
 );
 
@@ -25,7 +25,7 @@ module skid_buffer_struct #(
 
     // Upstream can present a new beat if we're not holding,
     // or if downstream is ready (so we can forward/“swap” this cycle).
-    assign ready_in = !skid_valid || ready_out;
+    assign ready_out = !skid_valid || ready_in;
 
     // Skid register control (synchronous active-high reset)
     always_ff @(posedge clk) begin
@@ -35,13 +35,13 @@ module skid_buffer_struct #(
         end else begin
             if (!skid_valid) begin
                 // Empty: capture when a valid beat arrives but downstream stalls
-                if (valid_in && !ready_out) begin
+                if (valid_in && !ready_in) begin
                     skid_valid <= 1'b1;
                     skid_data  <= data_in;
                 end
             end else begin
                 // Holding one beat
-                if (ready_out) begin
+                if (ready_in) begin
                     if (valid_in) begin
                         // Downstream consumes; immediately refill with new input (swap)
                         skid_valid <= 1'b1;

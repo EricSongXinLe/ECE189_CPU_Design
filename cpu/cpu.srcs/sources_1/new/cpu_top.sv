@@ -49,13 +49,13 @@ module fe_de_pipe (
     // Decode -> Execute payload
     output logic                     de_valid,
     output control_signals_t         de_signals_out
-);
-    // Fetch <-> Skid wires
+    );
+    // Fetch <-> Skid_FD wires
     fe_bus_t fe_data_in;
     logic    fe_valid_in;
     logic    fe_ready_in;
 
-    // Skid <-> Decode wires
+    // Skid_FD <-> Decode wires
     fe_bus_t fe_data_out;
     logic    fe_valid_out;
     logic    de_ready;       // from decode
