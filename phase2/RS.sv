@@ -153,7 +153,8 @@ module reservation_station #(
                 // Determine Initial Readiness
                 // Ready if: Dispatch says it's ready OR it is being broadcast on WB bus RIGHT NOW
                 
-                logic op1_now, op2_now;
+                logic op1_now;
+                logic op2_now;
                 op1_now = op1_ready_in;
                 op2_now = op2_ready_in;
 
