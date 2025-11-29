@@ -151,4 +151,13 @@ typedef struct packed {
     logic        is_branch;
 }
 dispatch_to_rob_t;
+
+typedef struct packed {
+    logic [ROB_IDX_WIDTH-1:0] rob_tag;
+    logic mispredict;
+    logic [31:0] branch_target;
+}
+fu_to_rob_t;
+
+
 `endif
