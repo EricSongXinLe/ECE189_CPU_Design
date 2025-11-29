@@ -128,6 +128,7 @@ module rename (
         rn_instr_comb.funct7     = de_instr_in.funct7;
         rn_instr_comb.funct3     = de_instr_in.funct3;
         rn_instr_comb.opcode     = de_instr_in.opcode;
+        rn_instr_comb.FU_type    = de_instr_in.FU_type;
     end
 
     

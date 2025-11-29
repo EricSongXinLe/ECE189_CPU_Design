@@ -30,34 +30,6 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-// This struct bundles all control signals and data
-// that need to be passed from the Decode stage to the Execute stage.
-typedef struct packed {
-    // Primary Control Signals
-    logic        RegWrite;   // Write result to register file
-    logic        MemRead;    // Read from data memory
-    logic        MemWrite;   // Write to data memory
-    logic        MemToReg;   // Write data from memory (vs. ALU) to reg
-    logic        ALUSrc;     // ALU operand 2 is immediate (vs. register)
-    logic        Branch;     // This is a BNE instruction
-    
-    // ALUOp from mainControl in C++ code
-    logic [1:0]  ALUOp;
-    
-    // Data for Execute Stage
-    logic [31:0] pc;         // PC for branch/JALR calculations
-    logic [4:0]  rs1_addr;   // Address of register operand 1
-    logic [4:0]  rs2_addr;   // Address of register operand 2
-    logic [4:0]  rd_addr;    // Address of destination register
-    logic [31:0] immediate;  // Sign-extended immediate value
-    
-    // Pass-throughs for ALU Control and special ops
-    logic [6:0]  funct7;
-    logic [2:0]  funct3;
-    logic [6:0]  opcode;     // For JALR/LUI special casing in execute
-} control_signals_t;
-
-
 module decode(
     input  logic        clk,
     input  logic        rst,
@@ -71,18 +43,18 @@ module decode(
     // Downstream Interface (to Rename)
     output logic        de_valid,       // Our output is valid
     input  logic        re_ready,       // Next stage is ready for our output
-    output control_signals_t de_signals_out // Our decoded output signals
+    output decode_to_rename_t de_signals_out // Our decoded output signals
 );
 
     // --- Internal Registers ---
     // These registers hold the decoded instruction and control signals,
     // forming the pipeline register between Decode and Execute.
     logic de_valid_reg;
-    control_signals_t de_signals_reg;
+    decode_to_rename_t de_signals_reg;
 
     // This signal holds the combinational-ly decoded signals
     // from the *current* instruction from Fetch.
-    control_signals_t next_signals;
+    decode_to_rename_t next_signals;
 
     always_comb begin
         // --- Instruction Field Extraction ---
@@ -105,6 +77,7 @@ module decode(
         next_signals.funct3 = funct3;
         next_signals.funct7 = funct7;
         next_signals.opcode = opcode;
+        next_signals.FU_type = 2'b11; //no op
         
         // --- Main Control & Immediate Generation ---
         case (opcode)
@@ -112,6 +85,7 @@ module decode(
             'h33: begin // 0b0110011
                 next_signals.RegWrite = 1'b1;
                 next_signals.ALUOp    = 2'b10;
+                next_signals.FU_type = 2'b00;
                 // immediate = 0 (default)
             end
 
@@ -120,6 +94,7 @@ module decode(
                 next_signals.RegWrite = 1'b1;
                 next_signals.ALUSrc   = 1'b1;
                 next_signals.ALUOp    = 2'b11;
+                next_signals.FU_type = 2'b00;
                 // I-type immediate: sign-extend from bit 31
                 next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
             end
@@ -131,6 +106,7 @@ module decode(
                 next_signals.MemToReg = 1'b1;
                 next_signals.ALUSrc   = 1'b1;
                 next_signals.ALUOp    = 2'b00;
+                next_signals.FU_type  = 2'b10;
                 // I-type immediate: sign-extend from bit 31
                 next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
             end
@@ -140,14 +116,16 @@ module decode(
                 next_signals.MemWrite = 1'b1;
                 next_signals.ALUSrc   = 1'b1;
                 next_signals.ALUOp    = 2'b00;
+                next_signals.FU_type  = 2'b10;
                 // S-type immediate: sign-extend from bit 31
                 next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
             end
 
             // B-type (Branch: BNE)
             'h63: begin // 0b1100011
-                next_signals.Branch = 1'b1;
+                next_signals.is_branch = 1'b1;
                 next_signals.ALUOp  = 2'b01;
+                next_signals.FU_type  = 2'b01;
                 // B-type immediate: sign-extend from bit 31
                 next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[7], fe_instr[30:25], fe_instr[11:8], 1'b0};
             end
@@ -157,6 +135,7 @@ module decode(
                 next_signals.RegWrite = 1'b1;
                 next_signals.ALUSrc   = 1'b1;
                 next_signals.ALUOp    = 2'b00;
+                next_signals.FU_type  = 2'b01;
                 // I-type immediate: sign-extend from bit 31
                 next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
             end
@@ -165,6 +144,7 @@ module decode(
             'h37: begin // 0b0110111
                 next_signals.RegWrite = 1'b1;
                 next_signals.ALUSrc   = 1'b1;
+                next_signals.FU_type  = 2'b00;
                 // U-type immediate: 
                 next_signals.immediate = {fe_instr[31:12], 12'h000};
             end

@@ -11,9 +11,7 @@ module reservation_station #(
 
     // --- Dispatch Interface (Allocate) ---
     input  logic                dp_valid,       // Dispatch is trying to write an instr
-    input  rename_to_dispatch_t dp_instr,       // Instruction payload
-    input  logic                op1_ready_in,   // Is PS1 ready in PRF right now? (From Scoreboard/BusyTable)
-    input  logic                op2_ready_in,   // Is PS2 ready in PRF right now?
+    input  dispatch_to_rs_t     dp_instr,       // Instruction payload
     output logic                rs_full,        // RS is full, stall Dispatch
 
     // --- Writeback/CDB Interface (Wakeup) ---
@@ -24,16 +22,14 @@ module reservation_station #(
     // --- Issue Interface (Select) ---
     // Sent to Functional Unit / PRF Read Ports
     output logic                issue_valid,
-    output rename_to_dispatch_t issue_instr,
+    output dispatch_to_rs_t     issue_instr,
     input  logic                fu_ready        // Functional Unit is ready to accept
 );
 
     // --- Internal Data Structures ---
     typedef struct packed {
         logic                valid;      // Slot is occupied
-        logic                op1_ready;  // Operand 1 is physically ready
-        logic                op2_ready;  // Operand 2 is physically ready
-        rename_to_dispatch_t instr;      // Payload
+        dispatch_to_rs_t     instr;      // Payload
     } rs_entry_t;
 
     rs_entry_t rs_array [RS_SIZE];
@@ -69,8 +65,8 @@ module reservation_station #(
     always_comb begin
         for (int i = 0; i < RS_SIZE; i++) begin
             // Default: keep current state
-            next_op1_ready[i] = rs_array[i].op1_ready;
-            next_op2_ready[i] = rs_array[i].op2_ready;
+            next_op1_ready[i] = rs_array[i].instr.ps1_ready;
+            next_op2_ready[i] = rs_array[i].instr.ps2_ready;
 
             // Check all Writeback ports
             for (int k = 0; k < CDB_WIDTH; k++) begin
@@ -116,8 +112,8 @@ module reservation_station #(
         if (rst) begin
             for (int i = 0; i < RS_SIZE; i++) begin
                 rs_array[i].valid <= 1'b0;
-                rs_array[i].op1_ready <= 1'b0;
-                rs_array[i].op2_ready <= 1'b0;
+                rs_array[i].instr.ps1_ready <= 1'b0;
+                rs_array[i].instr.ps2_ready <= 1'b0;
                 rs_array[i].instr <= '0;
             end
         end else begin
@@ -125,8 +121,8 @@ module reservation_station #(
             // Apply the snooped wakeup results calculated above
             for (int i = 0; i < RS_SIZE; i++) begin
                 if (rs_array[i].valid) begin
-                    rs_array[i].op1_ready <= next_op1_ready[i];
-                    rs_array[i].op2_ready <= next_op2_ready[i];
+                    rs_array[i].instr.ps1_ready <= next_op1_ready[i];
+                    rs_array[i].instr.ps2_ready <= next_op2_ready[i];
                 end
             end
 
@@ -153,10 +149,9 @@ module reservation_station #(
                 // Determine Initial Readiness
                 // Ready if: Dispatch says it's ready OR it is being broadcast on WB bus RIGHT NOW
                 
-                logic op1_now;
-                logic op2_now;
-                op1_now = op1_ready_in;
-                op2_now = op2_ready_in;
+                logic op1_now, op2_now;
+                op1_now = dp_instr.ps1_ready;
+                op2_now = dp_instr.ps2_ready;
 
                 // Check matches against concurrent Writebacks (Forwarding to Dispatch)
                 for (int k = 0; k < CDB_WIDTH; k++) begin
@@ -170,8 +165,8 @@ module reservation_station #(
                 if (dp_instr.ps1_addr == '0) op1_now = 1'b1;
                 if (dp_instr.ps2_addr == '0) op2_now = 1'b1;
 
-                rs_array[alloc_idx].op1_ready <= op1_now;
-                rs_array[alloc_idx].op2_ready <= op2_now;
+                rs_array[alloc_idx].instr.ps1_ready <= op1_now;
+                rs_array[alloc_idx].instr.ps2_ready <= op2_now;
             end
         end
     end

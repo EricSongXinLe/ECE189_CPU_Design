@@ -52,6 +52,7 @@ typedef struct packed {
     logic [6:0]  funct7;
     logic [2:0]  funct3;
     logic [6:0]  opcode;
+    logic [1:0]  FU_type; //00:ALU, 01:BR, 10: LSU, 11:NOP
 } decode_to_rename_t;
 
 
@@ -62,7 +63,9 @@ typedef struct packed {
     
     // Physical register addresses
     logic [PREG_IDX_WIDTH-1:0] ps1_addr;
+    logic ps1_ready;
     logic [PREG_IDX_WIDTH-1:0] ps2_addr;
+    logic ps2_ready;
     logic [PREG_IDX_WIDTH-1:0] prd_addr;     // New destination
     
     // For commit: what was the *previous* mapping for our dest?
@@ -82,6 +85,7 @@ typedef struct packed {
     logic [6:0]  funct7;
     logic [2:0]  funct3;
     logic [6:0]  opcode;
+    logic [1:0]  FU_type; //00:ALU, 01:BR, 10: LSU, 11:NOP
 } rename_to_dispatch_t;
 
 
@@ -100,4 +104,51 @@ typedef struct packed {
     logic                      is_branch;      // To free checkpoints
 } commit_to_rename_t;
 
+//Data from Dispatch to RS
+typedef struct packed {
+    logic [31:0] immediate;
+    
+    // Physical register addresses
+    logic [PREG_IDX_WIDTH-1:0] ps1_addr;
+    logic ps1_ready;
+    logic [PREG_IDX_WIDTH-1:0] ps2_addr;
+    logic ps2_ready;
+    logic [PREG_IDX_WIDTH-1:0] prd_addr;     // New destination
+    
+    // ROB tag for this instruction
+    logic [ROB_IDX_WIDTH-1:0] rob_tag;
+    
+    // Pass-through all other control signals
+    logic        MemRead;
+    logic        MemWrite;
+    logic        ALUSrc;
+    logic [1:0]  ALUOp;
+    logic [6:0]  funct7;
+    logic [2:0]  funct3;
+    logic [6:0]  opcode;
+    logic [1:0]  FU_type; //00:ALU, 01:BR, 10: LSU, 11:NOP
+}
+dispatch_to_rs_t;
+
+//Data from Dispatch to ROB
+typedef struct packed {
+    logic [31:0] pc;
+    
+    // Physical register addresses
+    logic [PREG_IDX_WIDTH-1:0] prd_addr;     // New destination
+    
+    // For commit: what was the *previous* mapping for our dest?
+    logic [PREG_IDX_WIDTH-1:0] old_prd_addr; 
+    
+    // ROB tag for this instruction
+    logic [ROB_IDX_WIDTH-1:0] rob_tag;
+    
+    // Pass-through all other control signals
+    logic        RegWrite;
+    logic        MemRead;
+    logic        MemWrite;
+    logic        MemToReg;
+    logic        is_branch;
+}
+dispatch_to_rob_t;
 `endif

@@ -60,7 +60,7 @@ fetch u_fetch (
         .data_out   (fe_data_out)
     );
 // ------------ Decode ------------
-    decode u_decode (
+    decode u_decode_upstream (
         .clk            (clk),
         .rst            (rst),
 
@@ -68,7 +68,7 @@ fetch u_fetch (
         .fe_valid       (fe_valid_out),
         .fe_instr       (fe_data_out.instr),
         .fe_pc          (fe_data_out.pc),
-        .de_ready       (de_ready),      // decode advertises readiness to skid
+        .de_ready       (de_ready)      // decode advertises readiness to skid
     );
 
 endmodule

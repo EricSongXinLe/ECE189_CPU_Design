@@ -13,7 +13,7 @@ logic de_valid_out;
 logic re_ready_in;
 
 // ------------ Decode ------------
-    decode u_decode (
+    decode u_decode_downstream (
         .clk            (clk),
         .rst            (rst),
 
@@ -40,6 +40,13 @@ logic re_ready_in;
     );
 
 // ------------ Rename ------------
-//TO DO
+rename u_rename_upstream {
+    .clk(clk),
+    .rst(rst),
 
+    // --- Upstream (from Decode) ---
+    .de_valid(de_valid_out),
+    .de_instr_in(de_signals_out),
+    .rn_ready(re_ready_in)
+}
 endmodule
