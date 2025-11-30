@@ -35,6 +35,7 @@ always_comb begin
     new_rs_entry = '0;
     new_rob_entry = '0;
     if (buffer_valid) begin
+        //rs
         new_rs_entry.immediate  = buffer_instr_in.immediate;
         new_rs_entry.ps1_addr   = buffer_instr_in.ps1_addr;
         new_rs_entry.ps1_ready  = buffer_instr_in.ps1_ready;
@@ -43,7 +44,6 @@ always_comb begin
         new_rs_entry.prd_addr   = buffer_instr_in.prd_addr;
         new_rs_entry.rob_tag    = buffer_instr_in.rob_tag;
 
-        // execution controls
         new_rs_entry.MemRead    = buffer_instr_in.MemRead;
         new_rs_entry.MemWrite   = buffer_instr_in.MemWrite;
         new_rs_entry.ALUSrc     = buffer_instr_in.ALUSrc;
@@ -53,16 +53,11 @@ always_comb begin
         new_rs_entry.opcode     = buffer_instr_in.opcode;
         new_rs_entry.FU_type    = buffer_instr_in.FU_type;
 
+        //rob
         new_rob_entry.pc           = buffer_instr_in.pc;
         new_rob_entry.prd_addr     = buffer_instr_in.prd_addr;
         new_rob_entry.old_prd_addr = buffer_instr_in.old_prd_addr;
         new_rob_entry.rob_tag      = buffer_instr_in.rob_tag;
-
-        // execution controls
-        new_rob_entry.RegWrite   = buffer_instr_in.RegWrite;
-        new_rob_entry.MemRead    = buffer_instr_in.MemRead;
-        new_rob_entry.MemWrite   = buffer_instr_in.MemWrite;
-        new_rob_entry.MemToReg   = buffer_instr_in.MemToReg;
         new_rob_entry.is_branch  = buffer_instr_in.is_branch;
     end
 end

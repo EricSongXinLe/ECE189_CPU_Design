@@ -2,15 +2,15 @@ module re_dis_pipe (
     input  logic clk,
     input  logic rst
 );
-// Rename <-> Skid_RD wires
+// Rename <-> buffer_RD wires
 rename_to_dispatch_t re_data_in;
 logic re_valid_in;
 logic dp_ready_out;
 
-// Skid_RD <-> Dispatch wires
-control_signals_t de_signals_out;
-logic de_valid_out;
-logic re_ready_in;
+// buffer_RD <-> Dispatch wires
+rename_to_dispatch_t re_data_out;
+logic re_valid_out;
+logic dp_ready_in;
 
 // ------------ Rename ------------
     rename u_rename_downstream (
@@ -23,30 +23,27 @@ logic re_ready_in;
         .dp_ready       (dp_ready_out)
     );
 
-// ------------ Skid Buffer (RE payload) ------------
-    skid_buffer_struct #(.T(control_signals_t)) u_skidD (
-        .clk        (clk),
-        .reset      (rst),
+fifo_pipeline #(.T(rename_to_dispatch_t), .DEPTH(2))
+u_buffer_fifo (
+    .clk(clk),
+    .reset(rst),
 
-        // upstream: decode <-> skid
-        .valid_in   (de_valid_in),
-        .ready_out   (re_ready_out),
-        .data_in    (de_signals_in),
-
-        // downstream: skid <-> decode
-        .valid_out  (de_valid_out),
-        .ready_in  (re_ready_in),
-        .data_out   (de_signals_out)
-    );
+    .valid_in(re_valid_in),
+    .ready_out(dp_ready_out),
+    .write_data(re_data_in),
+    .valid_out(re_valid_out),
+    .ready_in(dp_ready_in),
+    .read_data(re_data_out)
+);
 
 // ------------ Dispatch ------------
-rename u_rename {
+dispatch u_dispatch (
     .clk(clk),
     .rst(rst),
 
     // --- Upstream (from Decode) ---
-    .de_valid(de_valid_out),
-    .de_instr_in(de_signals_out),
-    .rn_ready(re_ready_in)
-}
+    .rn_valid(re_valid_out),
+    .rn_instr_in(re_data_out),
+    .rn_ready(dp_ready_in)
+);
 endmodule

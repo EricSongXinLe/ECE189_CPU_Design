@@ -143,11 +143,6 @@ typedef struct packed {
     // ROB tag for this instruction
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
     
-    // Pass-through all other control signals
-    logic        RegWrite;
-    logic        MemRead;
-    logic        MemWrite;
-    logic        MemToReg;
     logic        is_branch;
 }
 dispatch_to_rob_t;
