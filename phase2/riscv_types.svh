@@ -28,6 +28,11 @@ parameter PRF_READ_PORTS = RS_ALU_READ_PORTS + RS_LSU_READ_PORTS + RS_BRU_READ_P
 
 
 // --- Data Structures ---
+// ---------- FE <-> DE bus payload ----------
+typedef struct packed {
+  logic [31:0] pc;
+  logic [31:0] instr;
+} fe_bus_t;
 
 // Data from Decode (Phase 1) to Rename
 // We assume 'decode' has already identified instruction type.
@@ -93,6 +98,7 @@ typedef struct packed {
 typedef struct packed {
     logic [PREG_IDX_WIDTH-1:0] prd_addr; // Physical dest reg
     logic [31:0]               data;     // Data to write
+    logic [ROB_IDX_WIDTH-1:0]  rob_tag;
 } fu_to_prf_t;
 
 
@@ -127,8 +133,7 @@ typedef struct packed {
     logic [2:0]  funct3;
     logic [6:0]  opcode;
     logic [1:0]  FU_type; //00:ALU, 01:BR, 10: LSU, 11:NOP
-}
-dispatch_to_rs_t;
+} dispatch_to_rs_t;
 
 //Data from Dispatch to ROB
 typedef struct packed {
@@ -144,15 +149,13 @@ typedef struct packed {
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
     
     logic        is_branch;
-}
-dispatch_to_rob_t;
+} dispatch_to_rob_t;
 
 typedef struct packed {
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
     logic mispredict;
     logic [31:0] branch_target;
-}
-fu_to_rob_t;
-
+} fu_to_rob_t;
+ 
 
 `endif

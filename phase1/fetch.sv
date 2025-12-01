@@ -23,9 +23,9 @@
 module fetch(
     input logic clk,
     input logic rst,
-    input logic stall, jalr, branch, //JALR is unconditional, branch is conditional
-    input logic [31:0] offset,
-    input logic [31:0] rs1_val,
+    input logic stall, 
+    input logic redirect, //JALR is unconditional, branch is conditional
+    input logic [31:0] redirect_pc,
     
     input logic ready,
     output logic valid,
@@ -42,9 +42,8 @@ logic hold;
 assign hold = stall || (valid && !ready);
 
 always_comb begin   
-    nextpc = pc + 32'd4;
-    if (branch) nextpc = pc + offset;
-    if (jalr) nextpc = (rs1_val + offset) & 32'hFFFF_FFFE;
+    if (redirect) nextpc = redirect_pc;
+    else nextpc = pc + 32'd4;
 end
 
 always @(posedge clk) begin
@@ -68,7 +67,7 @@ always_ff @(posedge clk) begin
     //else hold: do nothing, automatically retains previous values
 end
 
-icache icache0( //I/O with icache
+icache u_icache( //I/O with icache
     //Output
     .inst(inst),
     //Input

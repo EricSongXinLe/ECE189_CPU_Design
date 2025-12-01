@@ -1,6 +1,6 @@
 module de_re_pipe (
     input  logic clk,
-    input  logic rst
+    input  logic rst,
 );
 // Decode <-> Skid_DR wires
 control_signals_t de_signals_in;

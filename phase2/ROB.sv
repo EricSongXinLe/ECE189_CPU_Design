@@ -30,8 +30,11 @@ module ROB #(
     input dispatch_to_rob_t dp_data_in,
     input logic dp_valid,
 
-    input logic fu_valid,
+    input logic flush,
     input fu_to_rob_t fu_wb,
+
+    input  logic wb_valid [3],
+    input  fu_to_prf_t wb_packet[3],
 
     output logic rob_full,
     output rob_commit_t rob_commit
@@ -46,6 +49,7 @@ assign empty = (tail == head);
 assign rob_full = ((tail + 4'd1) == head);
 
 integer i;
+
 always_ff @(posedge clk) begin
     if (rst) begin
         for (i = 0; i < ROB_SIZE; i = i+1)
@@ -57,10 +61,23 @@ always_ff @(posedge clk) begin
 
     else begin
         rob_head_in.commit_valid <= 1'b0;
-        if (fu_valid) begin
+        for (int i = 0; i < 3; i++) begin
+            if (wb_valid[i]) begin
+                ROB[ wb_packet[i].rob_tag ].complete <= 1'b1;
+            end
+        end
+        if (flush) begin //flush
             ROB[fu_wb.rob_tag].complete <= 1'b1;
             ROB[fu_wb.rob_tag].mispredict <= fu_wb.mispredict;
             ROB[fu_wb.rob_tag].branch_target <= fu_wb.branch_target;
+
+            for (i=0; i < ROB_SIZE; i=i+1) begin
+                if (i > fu_wb.rob_tag) begin
+                    ROB[i] <='0;
+                end
+            end
+            
+            tail <= fu_wb.rob_tag + 1'b1;
         end
         //fill in data from rename
         if(dp_valid && !rob_full) begin

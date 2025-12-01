@@ -60,6 +60,7 @@ module alu (
             // Always update data, valid bit controls usage
             wb_packet.prd_addr <= instr_in.prd_addr;
             wb_packet.data     <= result;
+            wb_packet.rob_tag  <= instr_in.rob_tag;
         end
     end
 

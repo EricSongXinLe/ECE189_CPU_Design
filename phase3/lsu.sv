@@ -66,6 +66,7 @@ module lsu (
     always_comb begin
         wb_packet.prd_addr = instr_s1.prd_addr;
         wb_packet.data     = mem_rdata; 
+        wb_packet.rob_tag = instr_s1.rob_tag;
     end
 
 endmodule

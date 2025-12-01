@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `include "riscv_types.svh"
 
-module reservation_station #(
+module RS #(
     parameter RS_SIZE = 8,
     parameter RS_IDX_WIDTH = $clog2(RS_SIZE),
     parameter CDB_WIDTH = 3 // Number of writeback ports to snoop (ALU+LSU+BRU)

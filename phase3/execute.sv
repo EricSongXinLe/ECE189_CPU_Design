@@ -36,7 +36,7 @@ module execute (
     output fu_to_prf_t          wb_packet [3],
 
     // --- Branch Outcome (To ROB/Fetch) ---
-    output logic                br_taken,
+    output logic                is_jalr,
     output logic [31:0]         target_pc,
     output logic                mispredict,
     output logic [ROB_IDX_WIDTH-1:0] br_rob_tag
@@ -82,7 +82,7 @@ module execute (
         .val2       (bru_val2),
         .valid_out  (wb_valid[2]),
         .wb_packet  (wb_packet[2]),
-        .br_taken   (br_taken),
+        .is_jalr    (is_jalr),
         .target_pc  (target_pc),
         .mispredict (mispredict),
         .rob_tag    (br_rob_tag)
