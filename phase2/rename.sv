@@ -21,6 +21,9 @@ module rename (
     input  logic clk,
     input  logic rst,
 
+    input logic                wb_valid [3],     
+    input fu_to_prf_t          wb_packet [3],
+
     // --- Upstream (from Decode) ---
     input  logic                de_valid,
     input  decode_to_rename_t   de_instr_in,
@@ -93,12 +96,65 @@ module rename (
 
     // Combinational rename logic for the *incoming* instruction
     rename_to_dispatch_t rn_instr_comb;
+
+    // 1. (Unpack PRD Addresses)
+    logic [PREG_IDX_WIDTH-1:0] wb_dest_addrs [3];
+    always_comb begin
+        for (int i = 0; i < 3; i++) begin
+            wb_dest_addrs[i] = wb_packet[i].prd_addr;
+        end
+    end
+
+    // 2. Lookup Table
+    logic src1_rdy_out, src2_rdy_out;
+
+    phys_reg_status_table #(
+        .PREG_ID_WIDTH(PREG_IDX_WIDTH),
+        .ROB_IDX_WIDTH(ROB_IDX_WIDTH),
+        .CDB_WIDTH(3)
+    ) u_scoreboard (
+        .clk            (clk),
+        .rst_n          (!rst), 
+
+        // Writer 1: Dispatch
+        .dispatch_valid     (do_rename && need_free_reg), 
+        .dispatch_dest_preg (rn_instr_comb.prd_addr),
+        .dispatch_rob_idx   (rn_instr_comb.rob_tag),
+
+        // Writer 2: Writeback (3 Ports)
+        .wb_valid           (wb_valid),      
+        .wb_dest_preg       (wb_dest_addrs),  
+
+        // Reader: Map Lookup
+        .src1_preg          (rn_instr_comb.ps1_addr),
+        .src2_preg          (rn_instr_comb.ps2_addr),
+
+        // Outputs
+        .src1_ready         (src1_rdy_out),
+        .src1_wait_rob      (), 
+        .src2_ready         (src2_rdy_out),
+        .src2_wait_rob      ()
+    );
     
     always_comb begin
         // --- 1. Look up source registers ---
         // p0 is always p0.
         rn_instr_comb.ps1_addr = (de_instr_in.rs1_addr == '0) ? '0 : map_table[de_instr_in.rs1_addr];
         rn_instr_comb.ps2_addr = (de_instr_in.rs2_addr == '0) ? '0 : map_table[de_instr_in.rs2_addr];
+        
+        // --- Fix: Assign Ready Bits ---
+        // Source 1
+        if (de_instr_in.rs1_addr == '0) 
+            rn_instr_comb.ps1_ready = 1'b1;
+        else 
+            rn_instr_comb.ps1_ready = src1_rdy_out;
+
+        // Source 2
+        if (de_instr_in.rs2_addr == '0 || de_instr_in.ALUSrc) 
+            //x0, immediate(ALUSrc = 1)
+            rn_instr_comb.ps2_ready = 1'b1;
+        else 
+            rn_instr_comb.ps2_ready = src2_rdy_out;
         
         // --- 2. Allocate destination register ---
         if (need_free_reg) begin
