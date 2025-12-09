@@ -365,7 +365,7 @@ execute u_execute (
 );
 
 logic branch_flush;
-assign branch_flush = issue_valid_br && (mispredict || is_jalr)
+assign branch_flush = issue_valid_br && (mispredict || is_jalr);
 //FE wireback
 assign stall = rob_full || rs_alu_full || rs_br_full || rs_lsu_full; //TO DO
 assign redirect = branch_flush;

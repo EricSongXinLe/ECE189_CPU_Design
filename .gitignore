@@ -1,0 +1,48 @@
+# --- Vivado 核心临时文件和目录 (必须忽略) ---
+.Xil/
+*.jou
+*.log
+*.str
+*.backup.log
+usage_statistics_webtalk.xml
+usage_statistics_webtalk.html
+
+# --- 自动生成的构建目录 (体积最大，必须忽略) ---
+# 包含综合(Synthesis)和实现(Implementation)的中间结果
+*.runs/
+# 包含仿真结果和波形
+*.sim/
+# Vivado 缓存
+*.cache/
+# 硬件管理器生成的文件
+*.hw/
+# IP 核生成的中间文件 (只保留 .xci 即可)
+*.ip_user_files/
+
+# --- 输出文件 (根据需求选择是否忽略) ---
+# 如果你想保留最终生成的比特流，注释掉下面这行
+*.bit
+*.bin
+# 设计检查点 (体积很大，通常不需要上传)
+*.dcp
+# 报告文件
+*.rpt
+
+# --- 仿真相关 ---
+xsim.dir/
+*.wdb
+*.pb
+
+# --- SDK / Vitis 相关 (如果涉及嵌入式软核) ---
+*.sdk/
+*.vitis/
+.metadata/
+*.elf
+*.hdf
+*.xsa
+
+# --- 操作系统和编辑器杂项 ---
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp

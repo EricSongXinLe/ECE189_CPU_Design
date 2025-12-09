@@ -5,29 +5,8 @@
 // Create Date: 11/01/2025 04:02:03 PM
 // Design Name: RISC-V 5-Stage Pipeline
 // Module Name: decode
-// Project Name: ECE 189
-// Target Devices: 
-// Tool Versions: 
 // Description: 
 // This module implements the Decode (DE) stage of the pipeline.
-// It decodes RISC-V instructions based on the provided C++ simulator logic
-// and acts as a pipeline register with a full valid/ready handshake.
-//
-// Instructions Supported:
-// R-type: ADD, SUB, SRA, AND
-// I-type: ADDI, SLTIU, ORI, LW, LBU, JALR
-// S-type: SW, SH
-// B-type: BNE
-// U-type: LUI
-//
-// Dependencies: None
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Revision 1.00 - Implemented full decode logic and pipeline register
-// Additional Comments:
-// Based on C++ simulator from CPU.cpp and CPU.h I wrote in CA1
-//
 //////////////////////////////////////////////////////////////////////////////////
 
 module decode(
@@ -35,40 +14,40 @@ module decode(
     input  logic        rst,
 
     // Upstream Interface (from Fetch)
-    input  logic        fe_valid,       // Input is valid
+    input  logic         fe_valid,       // Input is valid
     input  logic [31:0] fe_instr,     // Input instruction
     input  logic [31:0] fe_pc,        // Input PC
     output logic        de_ready,       // We are ready for input
 
     // Downstream Interface (to Rename)
-    output logic        de_valid,       // Our output is valid
+    output logic        de_valid,        // Our output is valid
     input  logic        re_ready,       // Next stage is ready for our output
     output decode_to_rename_t de_signals_out // Our decoded output signals
 );
-
     // --- Internal Registers ---
-    // These registers hold the decoded instruction and control signals,
-    // forming the pipeline register between Decode and Execute.
     logic de_valid_reg;
     decode_to_rename_t de_signals_reg;
 
     // This signal holds the combinational-ly decoded signals
-    // from the *current* instruction from Fetch.
     decode_to_rename_t next_signals;
 
-    always_comb begin
-        // --- Instruction Field Extraction ---
-        // Extract all possible fields from the incoming instruction
-        logic [6:0]  opcode = fe_instr[6:0];
-        logic [4:0]  rd     = fe_instr[11:7];
-        logic [2:0]  funct3 = fe_instr[14:12];
-        logic [4:0]  rs1    = fe_instr[19:15];
-        logic [4:0]  rs2    = fe_instr[24:20];
-        logic [6:0]  funct7 = fe_instr[31:25];
+    // --- Instruction Field Extraction (Moved outside always_comb to fix Warnings) ---
+    logic [6:0]  opcode;
+    logic [4:0]  rd;
+    logic [2:0]  funct3;
+    logic [4:0]  rs1;
+    logic [4:0]  rs2;
+    logic [6:0]  funct7;
 
+    assign opcode = fe_instr[6:0];
+    assign rd     = fe_instr[11:7];
+    assign funct3 = fe_instr[14:12];
+    assign rs1    = fe_instr[19:15];
+    assign rs2    = fe_instr[24:20];
+    assign funct7 = fe_instr[31:25];
+
+    always_comb begin
         // --- Default Control Signal Values (safe state) ---
-        // This is crucial. Start every instruction decode by assuming
-        // it does nothing, then set the bits that are required.
         next_signals = '0; // Set all fields in the struct to 0
         next_signals.pc = fe_pc;
         next_signals.rs1_addr = rs1;
@@ -150,8 +129,7 @@ module decode(
             end
             
             default: begin
-                // Default case: treat as NOP (all signals 0)
-                // This is already handled by the default assignment
+                // Default case: treat as NOP
             end
         endcase
     end
@@ -161,44 +139,29 @@ module decode(
 
     // `de_ready`: We are ready to accept a new instruction from Fetch if...
     // 1. Our pipeline register is currently empty (!de_valid_reg), OR
-    // 2. The Execute stage is ready to take our current instruction (ex_ready)
-    //    (This allows data to "flow through" combinational-ly)
-    assign de_ready = !de_valid_reg || ex_ready;
-
-    // `load_en`: We should load a new instruction into our register if...
-    // 1. Fetch has a valid instruction for us (fe_valid), AND
-    // 2. We are ready to accept it (de_ready)
-    logic load_en = fe_valid && de_ready;
-
-    // The output `de_valid` is simply the registered valid bit
-    assign de_valid = de_valid_reg;
+    // 2. The Next stage (Rename) is ready to take our current instruction (re_ready)
     
-    // The output signals are the registered signals
+    // FIX: Changed ex_ready to re_ready
+    assign de_ready = !de_valid_reg || re_ready;
+
+    logic load_en = fe_valid && de_ready;
+    
+    assign de_valid = de_valid_reg;
     assign de_signals_out = de_signals_reg;
 
-    // This is the pipeline register
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            // On reset, the pipeline stage is empty (invalid)
             de_valid_reg   <= 1'b0;
             de_signals_reg <= '0;
         end
         else if (load_en) begin
-            // Load: A new valid instruction is coming from Fetch
-            // and we are ready for it. Latch the combinational-ly
-            // decoded signals and mark ourselves as 'valid'.
             de_valid_reg   <= 1'b1;
             de_signals_reg <= next_signals;
         end
-        else if (de_valid_reg && ex_ready) begin
-            // Clear: The Execute stage is taking our data, and no new
-            // data is coming in. We become empty (invalid).
+        // FIX: Changed ex_ready to re_ready
+        else if (de_valid_reg && re_ready) begin
             de_valid_reg <= 1'b0;
         end
-        // else:
-        // Stall: (de_valid_reg && !ex_ready). We are holding a valid
-        // instruction, but Execute is not ready. We hold our state.
-        // `de_ready` becomes '0', stalling the Fetch stage.
     end
 
 endmodule

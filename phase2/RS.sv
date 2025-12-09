@@ -108,6 +108,23 @@ module RS #(
 
     // --- 4. State Update (Sequential) ---
     
+    logic op1_alloc_ready, op2_alloc_ready;
+
+    always_comb begin
+        op1_alloc_ready = dp_instr.ps1_ready;
+        op2_alloc_ready = dp_instr.ps2_ready;
+
+        for (int k = 0; k < CDB_WIDTH; k++) begin
+            if (wb_valid[k] && wb_packet[k].prd_addr == dp_instr.ps1_addr && dp_instr.ps1_addr != '0)
+                op1_alloc_ready = 1'b1;
+            if (wb_valid[k] && wb_packet[k].prd_addr == dp_instr.ps2_addr && dp_instr.ps2_addr != '0)
+                op2_alloc_ready = 1'b1;
+        end
+
+        if (dp_instr.ps1_addr == '0) op1_alloc_ready = 1'b1;
+        if (dp_instr.ps2_addr == '0) op2_alloc_ready = 1'b1;
+    end
+    
     always_ff @(posedge clk) begin
         if (rst) begin
             for (int i = 0; i < RS_SIZE; i++) begin
@@ -136,37 +153,13 @@ module RS #(
 
             // --- C. Allocate (Fill Slot) ---
             if (dp_valid && !rs_full) begin
-                // If we are issuing from this slot same cycle, Dispatch takes priority 
-                // (Reuse the slot immediately or just use a different one)
                 // The PriorityDecoder for allocation ensures we pick a free one.
-                // If the issue logic just freed slot X, alloc logic sees it as valid 
-                // (old state) so it won't double allocate in one cycle unless forwarded.
-                // Simple approach: Use the combinational alloc_idx.
-                
                 rs_array[alloc_idx].valid <= 1'b1;
                 rs_array[alloc_idx].instr <= dp_instr;
-                
-                // Determine Initial Readiness
-                // Ready if: Dispatch says it's ready OR it is being broadcast on WB bus RIGHT NOW
-                
-                logic op1_now, op2_now;
-                op1_now = dp_instr.ps1_ready;
-                op2_now = dp_instr.ps2_ready;
 
-                // Check matches against concurrent Writebacks (Forwarding to Dispatch)
-                for (int k = 0; k < CDB_WIDTH; k++) begin
-                    if (wb_valid[k] && wb_packet[k].prd_addr == dp_instr.ps1_addr && dp_instr.ps1_addr != '0)
-                        op1_now = 1'b1;
-                    if (wb_valid[k] && wb_packet[k].prd_addr == dp_instr.ps2_addr && dp_instr.ps2_addr != '0)
-                        op2_now = 1'b1;
-                end
-
-                // PS0 is always ready
-                if (dp_instr.ps1_addr == '0) op1_now = 1'b1;
-                if (dp_instr.ps2_addr == '0) op2_now = 1'b1;
-
-                rs_array[alloc_idx].instr.ps1_ready <= op1_now;
-                rs_array[alloc_idx].instr.ps2_ready <= op2_now;
+                // 使用上面 always_comb 算好的初始状态
+                rs_array[alloc_idx].instr.ps1_ready <= op1_alloc_ready;
+                rs_array[alloc_idx].instr.ps2_ready <= op2_alloc_ready;
             end
         end
     end
