@@ -32,9 +32,9 @@ module execute (
 
     // --- Writeback Outputs (CDBs) ---
     // Port 0: ALU, Port 1: LSU, Port 2: BRU
-    output logic                wb_valid [3],
-    output fu_to_prf_t          wb_packet [3],
+    output logic [2:0]       wb_valid,
 
+    output fu_to_prf_t [2:0] wb_packet,
     // --- Branch Outcome (To ROB/Fetch) ---
     output logic                is_jalr,
     output logic [31:0]         target_pc,

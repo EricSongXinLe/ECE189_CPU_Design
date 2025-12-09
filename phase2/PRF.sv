@@ -20,8 +20,8 @@ module prf (
 
     // --- Write Ports (from Functional Units) ---
     // When a FU completes, it provides its result, dest PRF, and write enable
-    input  logic                      write_en [PRF_WRITE_PORTS],
-    input  fu_to_prf_t                write_port_data [PRF_WRITE_PORTS]
+    input  logic [PRF_WRITE_PORTS-1:0]       write_en,
+    input  fu_to_prf_t [PRF_WRITE_PORTS-1:0] write_port_data
 );
 
     // The core register file storage

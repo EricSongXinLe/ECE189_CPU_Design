@@ -104,7 +104,12 @@ rename u_rename (
     .de_valid(de_valid_out),
     .de_instr_in(de_data_out),
     .rn_ready(re_ready_in),
-
+    
+    // --- Writeback (CDB) for RAT/FreeList Update ---
+    // 加上这两行连接：
+    .wb_valid(wb_valid),    // 连接顶层的 wb_valid 信号
+    .wb_packet(wb_packet),  // 连接顶层的 wb_packet 信号
+    
     // downstream (to DP)
     .rn_valid       (re_valid_in),
     .rn_instr_out   (re_data_in),
@@ -174,8 +179,9 @@ dispatch u_dispatch (
 );
 
 // ====== ROB =========
-logic  wb_valid [3];
-fu_to_prf_t wb_packet [3];
+logic [2:0] wb_valid;             // Packed: 正确，这是 3-bit 宽的向量
+fu_to_prf_t [2:0] wb_packet;
+
 logic flush;
 fu_to_rob_t fu_wb;
 rob_commit_t rob_commit;

@@ -34,8 +34,8 @@ module phys_reg_status_table #(
 
     // --- Writeback/CDB Interface (Writer 2: Set Ready) ---
     // Now supports arrays for multiple ports
-    input  logic                     wb_valid [CDB_WIDTH],
-    input  logic [PREG_ID_WIDTH-1:0] wb_dest_preg [CDB_WIDTH],
+    input  logic [CDB_WIDTH-1:0]     wb_valid,
+    input  logic [CDB_WIDTH-1:0][PREG_ID_WIDTH-1:0] wb_dest_preg,
 
     // --- Rename/Map Interface (Reader) ---
     input  logic [PREG_ID_WIDTH-1:0] src1_preg,
