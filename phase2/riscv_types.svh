@@ -112,6 +112,7 @@ typedef struct packed {
 
 //Data from Dispatch to RS
 typedef struct packed {
+    logic [31:0] pc;
     logic [31:0] immediate;
     
     // Physical register addresses
@@ -156,6 +157,26 @@ typedef struct packed {
     logic mispredict;
     logic [31:0] branch_target;
 } fu_to_rob_t;
+
+// 在 riscv_types.svh 末尾添加：
+
+// Data from ROB to Commit/Rename (for freeing resources)
+// 在 riscv_types.svh 末尾
+
+// ROB Commit Interface (Broadcast to Rename/Fetch)
+typedef struct packed {
+    logic                      valid;          // Commit valid
+    logic [ROB_IDX_WIDTH-1:0]  rob_tag;        // ROB Tag
+    
+    logic [PREG_IDX_WIDTH-1:0] old_prd_addr;   
+    logic [AREG_IDX_WIDTH-1:0] rd_addr;        
+    logic                      RegWrite;       
+    
+    logic                      mispredict;     // <--- 必须有这一行！
+    logic [31:0]               branch_target;  // <--- 还有这一行
+    logic                      is_branch;      
+} rob_commit_t;
+
  
 
 `endif

@@ -113,7 +113,16 @@ rename u_rename (
     // downstream (to DP)
     .rn_valid       (re_valid_in),
     .rn_instr_out   (re_data_in),
-    .dp_ready       (dp_ready_out)
+    .dp_ready       (dp_ready_out),
+    .commit_valid     (rob_commit.valid),       
+    
+    // 2. 提交信息 (告诉 Rename 哪个旧物理寄存器可以释放了)
+    // 这里可能需要类型转换，或者确保 rob_commit_t 和 commit_to_rename_t 兼容
+    .commit_instr     ({rob_commit.old_prd_addr, rob_commit.rd_addr, rob_commit.RegWrite, rob_commit.is_branch}), 
+
+    // 3. 分支预测失败 (用于恢复 Map Table Checkpoint)
+    // 你的 cpu_top 后面定义了 flush_from_rob，可以直接用
+    .mispredict_valid (flush_from_rob)
 );
 
 // ====== RE -> DP Pipe (Buffer) =========
@@ -207,6 +216,10 @@ ROB u_rob (
 logic            issue_valid_alu;
 dispatch_to_rs_t issue_instr_alu;
 logic            fu_ready_alu; 
+
+assign fu_ready_alu = 1'b1;
+assign fu_ready_br  = 1'b1;
+assign fu_ready_lsu = 1'b1;
 
 RS u_alu (
     .clk(clk),
@@ -303,14 +316,74 @@ assign read_addr[4] = issue_instr_lsu.ps1_addr;
 assign read_addr[5] = issue_instr_lsu.ps2_addr;
 
 // PRF Read Data Mapping
-assign prf_val1_alu = read_data[0];
-assign prf_val2_alu = read_data[1];
+// ✅ 替换为这段 Bypass 逻辑 ✅
+// --- Operand Bypass / Forwarding Logic ---
+// We need to check if the data currently being written back (on CDB) 
+// is the data we need for the current issue stage.
 
-assign prf_val1_br  = read_data[2];
-assign prf_val2_br  = read_data[3];
+logic [31:0] alu_op1_final, alu_op2_final;
+logic [31:0] br_op1_final,  br_op2_final;
+logic [31:0] lsu_op1_final, lsu_op2_final;
 
-assign prf_val1_lsu = read_data[4];
-assign prf_val2_lsu = read_data[5];
+always_comb begin
+    // ---------------------------------------------------------
+    // 1. ALU Port Bypass
+    // ---------------------------------------------------------
+    // Operand 1
+    alu_op1_final = read_data[0]; // Default: read from PRF
+    for (int k = 0; k < 3; k++) begin
+        // If WB is valid AND addresses match AND not x0/p0
+        if (wb_valid[k] && wb_packet[k].prd_addr == issue_instr_alu.ps1_addr && issue_instr_alu.ps1_addr != '0) begin
+            alu_op1_final = wb_packet[k].data;
+        end
+    end
+
+    // Operand 2
+    alu_op2_final = read_data[1];
+    for (int k = 0; k < 3; k++) begin
+        if (wb_valid[k] && wb_packet[k].prd_addr == issue_instr_alu.ps2_addr && issue_instr_alu.ps2_addr != '0) begin
+            alu_op2_final = wb_packet[k].data;
+        end
+    end
+    
+    // ---------------------------------------------------------
+    // 2. Branch Port Bypass
+    // ---------------------------------------------------------
+    // Operand 1
+    br_op1_final = read_data[2];
+    for (int k = 0; k < 3; k++) begin
+        if (wb_valid[k] && wb_packet[k].prd_addr == issue_instr_br.ps1_addr && issue_instr_br.ps1_addr != '0) begin
+            br_op1_final = wb_packet[k].data;
+        end
+    end
+
+    // Operand 2
+    br_op2_final = read_data[3];
+    for (int k = 0; k < 3; k++) begin
+        if (wb_valid[k] && wb_packet[k].prd_addr == issue_instr_br.ps2_addr && issue_instr_br.ps2_addr != '0) begin
+            br_op2_final = wb_packet[k].data;
+        end
+    end
+
+    // ---------------------------------------------------------
+    // 3. LSU Port Bypass
+    // ---------------------------------------------------------
+    // Operand 1
+    lsu_op1_final = read_data[4];
+    for (int k = 0; k < 3; k++) begin
+        if (wb_valid[k] && wb_packet[k].prd_addr == issue_instr_lsu.ps1_addr && issue_instr_lsu.ps1_addr != '0) begin
+            lsu_op1_final = wb_packet[k].data;
+        end
+    end
+
+    // Operand 2
+    lsu_op2_final = read_data[5];
+    for (int k = 0; k < 3; k++) begin
+        if (wb_valid[k] && wb_packet[k].prd_addr == issue_instr_lsu.ps2_addr && issue_instr_lsu.ps2_addr != '0) begin
+            lsu_op2_final = wb_packet[k].data;
+        end
+    end
+end
 
 
 // Execution signals
@@ -341,18 +414,18 @@ execute u_execute (
     // ---- Issue from RS ----
     .alu_issue_valid(issue_valid_alu),
     .alu_issue_instr(issue_instr_alu),
-    .alu_val1(prf_val1_alu),
-    .alu_val2(prf_val2_alu),
+    .alu_val1(alu_op1_final),
+    .alu_val2(alu_op2_final),
 
     .bru_issue_valid(issue_valid_br),
     .bru_issue_instr(issue_instr_br),
-    .bru_val1(prf_val1_br),
-    .bru_val2(prf_val2_br),
+    .bru_val1(br_op1_final),
+    .bru_val2(br_op2_final),
 
     .lsu_issue_valid(issue_valid_lsu),
     .lsu_issue_instr(issue_instr_lsu),
-    .lsu_val1(prf_val1_lsu),
-    .lsu_val2(prf_val2_lsu),
+    .lsu_val1(lsu_op1_final),
+    .lsu_val2(lsu_op2_final),
 
     // ---- Memory ----
     .dmem_en(dmem_en),

@@ -31,6 +31,8 @@ always_comb begin
     new_rs_entry = '0;
     if (buffer_valid_in) begin
         //rs
+        new_rs_entry.pc         = buffer_instr_in.pc;
+        
         new_rs_entry.immediate  = buffer_instr_in.immediate;
         new_rs_entry.ps1_addr   = buffer_instr_in.ps1_addr;
         new_rs_entry.ps1_ready  = buffer_instr_in.ps1_ready;

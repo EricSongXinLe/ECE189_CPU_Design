@@ -144,7 +144,8 @@ module decode(
     // FIX: Changed ex_ready to re_ready
     assign de_ready = !de_valid_reg || re_ready;
 
-    logic load_en = fe_valid && de_ready;
+    logic load_en;
+    assign load_en = fe_valid && de_ready;
     
     assign de_valid = de_valid_reg;
     assign de_signals_out = de_signals_reg;

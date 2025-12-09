@@ -12,13 +12,6 @@ typedef struct packed {
     logic [31:0] branch_target;
 } rob_entry;
 
-typedef struct packed {
-    logic commit_valid;
-    logic [ROB_IDX_WIDTH-1:0] commit_idx;
-    logic mispredict;
-    logic [31:0] branch_target;
-}
-rob_commit_t;
 
 module ROB #(
     parameter ROB_SIZE = 16,
@@ -60,7 +53,7 @@ always_ff @(posedge clk) begin
     end
 
     else begin
-        rob_head_in.commit_valid <= 1'b0;
+        rob_head_in.valid <= 1'b0;
         for (int i = 0; i < 3; i++) begin
             if (wb_valid[i]) begin
                 ROB[ wb_packet[i].rob_tag ].complete <= 1'b1;
@@ -93,10 +86,17 @@ always_ff @(posedge clk) begin
             tail <= (tail==ROB_SIZE-1) ? 0 : tail + 4'd1;
         end
         if (ROB[head].valid && ROB[head].complete) begin
-            rob_head_in.commit_valid <= 1'b1;
-            rob_head_in.commit_idx <= head;
+            rob_head_in.valid <= 1'b1;
+            rob_head_in.rob_tag <= head;
             rob_head_in.mispredict <= ROB[head].mispredict;
             rob_head_in.branch_target <= ROB[head].branch_target;
+            
+            rob_head_in.old_prd_addr  <= ROB[head].old_prd_addr;
+            rob_head_in.is_branch     <= ROB[head].is_branch;
+                // 注意：你的 rob_entry 里似乎没存 RegWrite？
+                // 如果没存，可以用 (old_prd_addr != 0) 来判断是否需要回收。
+            rob_head_in.RegWrite      <= (ROB[head].old_prd_addr != '0);
+                
             ROB[head] <= '0;
             head <= (head == ROB_SIZE-1) ? '0 : head + 4'd1;
         end

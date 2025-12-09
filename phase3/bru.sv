@@ -8,7 +8,7 @@ module bru (
 
     // Issue Interface
     input  logic                valid_in,
-    input  rename_to_dispatch_t instr_in,
+    input  dispatch_to_rs_t instr_in,
     input  logic [31:0]         val1,
     input  logic [31:0]         val2,
 
