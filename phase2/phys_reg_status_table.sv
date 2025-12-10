@@ -1,24 +1,3 @@
-/* * Module: phys_reg_status_table
- * Description: 
- * Tracks the status (Busy/Ready) and the Producer ROB Index for every Physical Register.
- * This is used during the Rename/Dispatch stage to inform the Reservation Stations 
- * whether the source operands are already available in the PRF or if they need to 
- * wait for a specific ROB entry to complete.
- *
- * Inputs:
- * - Dispatch Signals: Mark a destination physical register as BUSY (waiting for computation).
- * - Writeback Signals: Mark a destination physical register as READY (computation finished).
- * - Source Lookups: Query the status of source physical registers.
- *
- * Outputs:
- * - Ready bits for source operands (to be sent to RS).
- * - ROB Tags for source operands (to be sent to RS for wakeup monitoring).
- */
-
-/*
- * Updated to support multiple Writeback (CDB) ports.
- */
-
 module phys_reg_status_table #(
     parameter PREG_ID_WIDTH = 7,  // 128 Physical Registers
     parameter ROB_IDX_WIDTH = 4,  // 16 ROB entries
@@ -33,7 +12,6 @@ module phys_reg_status_table #(
     input  logic [ROB_IDX_WIDTH-1:0] dispatch_rob_idx,
 
     // --- Writeback/CDB Interface (Writer 2: Set Ready) ---
-    // Now supports arrays for multiple ports
     input  logic [CDB_WIDTH-1:0]     wb_valid,
     input  logic [CDB_WIDTH-1:0][PREG_ID_WIDTH-1:0] wb_dest_preg,
 
@@ -46,7 +24,10 @@ module phys_reg_status_table #(
     output logic [ROB_IDX_WIDTH-1:0] src1_wait_rob,
     
     output logic                     src2_ready,
-    output logic [ROB_IDX_WIDTH-1:0] src2_wait_rob
+    output logic [ROB_IDX_WIDTH-1:0] src2_wait_rob,
+
+    // 新增：导出整个 busy_table 给顶层 / RS 使用
+    output logic [(1<<PREG_ID_WIDTH)-1:0] busy_table_out
 );
 
     localparam NUM_PREGS = 1 << PREG_ID_WIDTH;
@@ -79,27 +60,37 @@ module phys_reg_status_table #(
     // --- Write Logic (Sequential) ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            busy_table <= '0; // Reset all to Ready
-            for (int i = 0; i < NUM_PREGS; i++) begin
+            busy_table <= '0;
+            for (int i = 0; i < NUM_PREGS; i++)
                 producer_rob_table[i] <= '0;
-            end
         end else begin
-            
-            // 1. Handle Writeback (Completion) -> Set Ready
-            // Iterate through all CDB ports
+            // 1. Writeback 置 Ready
             for (int i = 0; i < CDB_WIDTH; i++) begin
-                if (wb_valid[i]) begin
+                if (wb_valid[i] && (wb_dest_preg[i] != '0)) begin
+                    $display("[SCOREBOARD] t=%0t WB preg=%0d => ready",
+                             $time, wb_dest_preg[i]);
                     busy_table[wb_dest_preg[i]] <= 1'b0;
                 end
             end
 
-            // 2. Handle Dispatch (Allocation) -> Set Busy
-            // Priority: Dispatch overrides Writeback if they target the same register.
-            // (Scenario: Old instr finishes using Px, New instr allocates Px immediately)
-            if (dispatch_valid) begin
-                busy_table[dispatch_dest_preg] <= 1'b1;
+            // 2. Dispatch 置 Busy -- 只对 prd != 0
+            if (dispatch_valid && (dispatch_dest_preg != '0)) begin
+                $display("[SCOREBOARD] t=%0t DISPATCH dest_preg=%0d rob=%0d => busy",
+                         $time, dispatch_dest_preg, dispatch_rob_idx);
+                busy_table[dispatch_dest_preg]         <= 1'b1;
                 producer_rob_table[dispatch_dest_preg] <= dispatch_rob_idx;
             end
+        end
+    end
+
+    // 把 busy_table 导出去
+    assign busy_table_out = busy_table;
+
+    // 这个 debug block 原样可以留着
+    always_comb begin
+        if (src1_preg == 7'd33 || src1_preg == 7'd36) begin
+            $display("[SCOREBOARD-READ] t=%0t src1_preg=%0d busy=%0d",
+                     $time, src1_preg, busy_table[src1_preg]);
         end
     end
 

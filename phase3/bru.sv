@@ -61,12 +61,41 @@ module bru (
     assign mispredict = valid_in && is_branch && taken; 
 
     // 4. Pipeline Register (Writeback for Link Address)
+    
+    always_ff @(posedge clk) begin
+    if (!rst) begin
+        if (valid_in) begin
+            $display("[BRU] t=%0t pc=%h opcode=%h val1=%0d val2=%0d is_branch=%0d is_jalr=%0d taken=%0d target=%h",
+                     $time, instr_in.pc, instr_in.opcode,
+                     val1, val2, is_branch, is_jalr, taken, calc_target);
+        end
+        if (valid_out) begin
+            $display("[BRU-WB] t=%0t rob_tag=%0d prd=%0d data=%0d",
+                     $time, wb_packet.rob_tag, wb_packet.prd_addr, wb_packet.data);
+        end
+    end
+end
+
     always_ff @(posedge clk) begin
         if (rst || flush) begin
             valid_out <= 1'b0;
             wb_packet <= '0;
         end else begin
             valid_out <= valid_in;
+            
+            if (valid_in) begin
+            `ifndef SYNTHESIS
+            $display("[BRU] t=%0t pc=%h opcode=%h funct3=%0d val1=%0d val2=%0d taken=%0d target=%h rob_tag=%0d",
+                     $time,
+                     instr_in.pc,
+                     instr_in.opcode,
+                     instr_in.funct3,
+                     val1, val2,
+                     taken,
+                     target_pc,
+                     instr_in.rob_tag);
+            `endif
+            end
             
             // Writeback logic
             wb_packet.prd_addr <= instr_in.prd_addr;
@@ -75,9 +104,33 @@ module bru (
             // For JAL/JALR, write PC+4. For Branches, result is irrelevant (rd=0)
             if (is_jalr) begin
                 wb_packet.data <= instr_in.pc + 32'd4;
-            end else
+            end else    
                 wb_packet.data <= '0;
         end
     end
+    
+    always_ff @(posedge clk) begin
+    if (!rst) begin
+        if (valid_in) begin
+            $display("[BRU] t=%0t pc=%h opcode=%h val1=%0d val2=%0d is_branch=%0d is_jalr=%0d taken=%0d target=%h",
+                     $time,
+                     instr_in.pc,
+                     instr_in.opcode,
+                     val1, val2,
+                     is_branch, is_jalr,
+                     taken,
+                     calc_target);
+        end
+
+        if (valid_out) begin
+            $display("[BRU-WB] t=%0t rob_tag=%0d prd=%0d data=%0d",
+                     $time,
+                     wb_packet.rob_tag,
+                     wb_packet.prd_addr,
+                     wb_packet.data);
+        end
+    end
+end
+
 
 endmodule

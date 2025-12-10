@@ -37,7 +37,8 @@ module rename (
     input  commit_to_rename_t   commit_instr,
 
     // --- From Branch Unit (Mispredict) ---
-    input  logic                mispredict_valid
+    input  logic                mispredict_valid,
+    output logic [(1<<PREG_IDX_WIDTH)-1:0] preg_busy_table
 );
     // --- 1. Map Table ---
     // Maps ARCH_REGS -> PHYS_REGS
@@ -78,8 +79,11 @@ module rename (
     assign fl_full = (fl_count == PHYS_REGS); 
 
     // Logic for stalling
+    logic [4:0] actual_rd_addr;
     logic need_free_reg;
-    assign need_free_reg = de_instr_in.RegWrite && (de_instr_in.rd_addr != '0);
+    assign actual_rd_addr = (de_instr_in.is_branch || de_instr_in.MemWrite) ? 5'b0 : de_instr_in.rd_addr;
+
+    assign need_free_reg = de_instr_in.RegWrite && (actual_rd_addr != '0);
     
     logic resource_stall;
     assign resource_stall = need_free_reg && fl_empty;
@@ -110,6 +114,9 @@ module rename (
     // 2. Lookup Table (Scoreboard)
     logic src1_rdy_out, src2_rdy_out;
     
+    localparam int NUM_PREGS = (1 << PREG_IDX_WIDTH);
+    logic [NUM_PREGS-1:0] busy_table_int;
+    
     phys_reg_status_table #(
         .PREG_ID_WIDTH(PREG_IDX_WIDTH),
         .ROB_IDX_WIDTH(ROB_IDX_WIDTH),
@@ -135,14 +142,20 @@ module rename (
         .src1_ready         (src1_rdy_out),
         .src1_wait_rob      (), 
         .src2_ready         (src2_rdy_out),
-        .src2_wait_rob      ()
+        .src2_wait_rob      (),
+        
+        .busy_table_out     (busy_table_int)
     );
+    
+    assign preg_busy_table = busy_table_int;
 
     always_comb begin
         // --- 1. Look up source registers ---
         // p0 is always p0.
         rn_instr_comb.ps1_addr = (de_instr_in.rs1_addr == '0) ? '0 : map_table[de_instr_in.rs1_addr];
         rn_instr_comb.ps2_addr = (de_instr_in.rs2_addr == '0) ? '0 : map_table[de_instr_in.rs2_addr];
+        
+
 
         // --- Fix: Assign Ready Bits ---
         // Source 1
@@ -163,7 +176,7 @@ module rename (
             // Get new PREG from Free List
             rn_instr_comb.prd_addr = free_list_q[fl_head];
             // Get old PREG from Map Table (for commit)
-            rn_instr_comb.old_prd_addr = map_table[de_instr_in.rd_addr];
+            rn_instr_comb.old_prd_addr = map_table[actual_rd_addr];
         end else begin
             // Not writing or writing to x0
             rn_instr_comb.prd_addr = '0;
@@ -187,6 +200,16 @@ module rename (
         rn_instr_comb.funct3     = de_instr_in.funct3;
         rn_instr_comb.opcode     = de_instr_in.opcode;
         rn_instr_comb.FU_type    = de_instr_in.FU_type;
+        
+                if (de_valid) begin
+        $display("[RENAME] t=%0t pc=%h rs1=%0d ps1=%0d src1_ready=%0d -> ps1_ready_out=%0d",
+                 $time,
+                 de_instr_in.pc,
+                 de_instr_in.rs1_addr,
+                 rn_instr_comb.ps1_addr,
+                 src1_rdy_out,
+                 rn_instr_comb.ps1_ready);
+        end
     end
     
     // --- Sequential Logic (State Updates) ---
@@ -234,7 +257,7 @@ module rename (
             if (do_rename) begin
                 // Update Map Table
                 if (need_free_reg) begin
-                    map_table[de_instr_in.rd_addr] <= rn_instr_comb.prd_addr;
+                    map_table[actual_rd_addr] <= rn_instr_comb.prd_addr;
                 end
                 
                 // Update ROB Tag Counter
@@ -280,5 +303,31 @@ module rename (
             end
         end
     end
+    
+    // 在重命名阶段打印RAT状态
+always_ff @(posedge clk) begin
+    if (!rst) begin
+        if (do_rename) begin
+            // 打印RAT更新
+            if (need_free_reg) begin
+                $display("[RAT_UPDATE] t=%0t pc=%h x%0d -> p%0d (old was p%0d)",
+                         $time, de_instr_in.pc, 
+                         actual_rd_addr, rn_instr_comb.prd_addr,
+                         map_table[actual_rd_addr]);
+            end
+            
+            // 打印x1-x4的当前映射
+            for (int i = 1; i <= 4; i++) begin
+                $display("  [RAT_STATE] x%0d -> p%0d", i, map_table[i]);
+            end
+        end
+        
+        // 打印分支checkpoint保存
+        if (do_rename && de_instr_in.is_branch) begin
+            $display("[BRANCH_CHECKPOINT] t=%0t pc=%h saved RAT state",
+                     $time, de_instr_in.pc);
+        end
+    end
+end
 
 endmodule

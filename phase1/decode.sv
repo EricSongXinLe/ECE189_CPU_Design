@@ -46,93 +46,90 @@ module decode(
     assign rs2    = fe_instr[24:20];
     assign funct7 = fe_instr[31:25];
 
-    always_comb begin
-        // --- Default Control Signal Values (safe state) ---
-        next_signals = '0; // Set all fields in the struct to 0
-        next_signals.pc = fe_pc;
-        next_signals.rs1_addr = rs1;
-        next_signals.rs2_addr = rs2;
-        next_signals.rd_addr = rd;
-        next_signals.funct3 = funct3;
-        next_signals.funct7 = funct7;
-        next_signals.opcode = opcode;
-        next_signals.FU_type = 2'b11; //no op
+// 在 decode 模块的 always_comb 中
+always_comb begin
+    // --- Default Control Signal Values (safe state) ---
+    next_signals = '0;
+    next_signals.pc = fe_pc;
+    next_signals.rs1_addr = rs1;
+    next_signals.rs2_addr = rs2;
+    next_signals.rd_addr = rd;  // 默认
+    next_signals.funct3 = funct3;
+    next_signals.funct7 = funct7;
+    next_signals.opcode = opcode;
+    next_signals.FU_type = 2'b11; // no op
+    
+    // --- Main Control & Immediate Generation ---
+    case (opcode)
+        // R-type (ADD, SUB, SRA, AND)
+        'h33: begin // 0b0110011
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUOp    = 2'b10;
+            next_signals.FU_type = 2'b00;
+        end
+
+        // I-type (ALU: ADDI, SLTIU, ORI)
+        'h13: begin // 0b0010011
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b11;
+            next_signals.FU_type = 2'b00;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
+        end
+
+        // I-type (Load: LW, LBU)
+        'h03: begin // 0b0000011
+            next_signals.RegWrite = 1'b1;
+            next_signals.MemRead  = 1'b1;
+            next_signals.MemToReg = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00;
+            next_signals.FU_type  = 2'b10;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
+        end
+
+        // S-type (Store: SW, SH)
+        'h23: begin // 0b0100011
+            next_signals.MemWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00;
+            next_signals.FU_type  = 2'b10;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
+            next_signals.rd_addr = 5'b0;  // 关键修复：存储指令不写寄存器
+        end
+
+        // B-type (Branch: BNE)
+        'h63: begin // 0b1100011
+            next_signals.is_branch = 1'b1;
+            next_signals.ALUOp  = 2'b01;
+            next_signals.FU_type  = 2'b01;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[7], fe_instr[30:25], fe_instr[11:8], 1'b0};
+            next_signals.rd_addr = 5'b0;  // 关键修复：分支指令不写寄存器
+        end
+
+        // I-type (JALR)
+        'h67: begin // 0b1100111
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00;
+            next_signals.FU_type  = 2'b01;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
+        end
+
+        // U-type (LUI)
+        'h37: begin // 0b0110111
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.FU_type  = 2'b00;
+            next_signals.immediate = {fe_instr[31:12], 12'h000};
+        end
         
-        // --- Main Control & Immediate Generation ---
-        case (opcode)
-            // R-type (ADD, SUB, SRA, AND)
-            'h33: begin // 0b0110011
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUOp    = 2'b10;
-                next_signals.FU_type = 2'b00;
-                // immediate = 0 (default)
-            end
-
-            // I-type (ALU: ADDI, SLTIU, ORI)
-            'h13: begin // 0b0010011
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b11;
-                next_signals.FU_type = 2'b00;
-                // I-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
-            end
-
-            // I-type (Load: LW, LBU)
-            'h03: begin // 0b0000011
-                next_signals.RegWrite = 1'b1;
-                next_signals.MemRead  = 1'b1;
-                next_signals.MemToReg = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b00;
-                next_signals.FU_type  = 2'b10;
-                // I-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
-            end
-
-            // S-type (Store: SW, SH)
-            'h23: begin // 0b0100011
-                next_signals.MemWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b00;
-                next_signals.FU_type  = 2'b10;
-                // S-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
-            end
-
-            // B-type (Branch: BNE)
-            'h63: begin // 0b1100011
-                next_signals.is_branch = 1'b1;
-                next_signals.ALUOp  = 2'b01;
-                next_signals.FU_type  = 2'b01;
-                // B-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[7], fe_instr[30:25], fe_instr[11:8], 1'b0};
-            end
-
-            // I-type (JALR)
-            'h67: begin // 0b1100111
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b00;
-                next_signals.FU_type  = 2'b01;
-                // I-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
-            end
-
-            // U-type (LUI)
-            'h37: begin // 0b0110111
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.FU_type  = 2'b00;
-                // U-type immediate: 
-                next_signals.immediate = {fe_instr[31:12], 12'h000};
-            end
-            
-            default: begin
-                // Default case: treat as NOP
-            end
-        endcase
-    end
+        default: begin
+            // Default case: treat as NOP
+            next_signals.rd_addr = 5'b0;  // 安全起见
+        end
+    endcase
+end
 
 
     // --- Pipeline Register & Handshake Logic ---
@@ -158,6 +155,23 @@ module decode(
         else if (load_en) begin
             de_valid_reg   <= 1'b1;
             de_signals_reg <= next_signals;
+            
+            `ifndef SYNTHESIS
+        $display("[DECODE] t=%0t pc=%h inst=%h opcode=%h rd=%0d rs1=%0d rs2=%0d imm=%0d FU=%0d RegWrite=%0d is_branch=%0d ALUSrc=%0d",
+                 $time,
+                 fe_pc,
+                 fe_instr,
+                 opcode,
+                 rd,
+                 rs1,
+                 rs2,
+                 next_signals.immediate,
+                 next_signals.FU_type,
+                 next_signals.RegWrite,
+                 next_signals.is_branch,
+                 next_signals.ALUSrc);
+        `endif
+        
         end
         // FIX: Changed ex_ready to re_ready
         else if (de_valid_reg && re_ready) begin

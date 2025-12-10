@@ -83,9 +83,25 @@ always_ff @(posedge clk) begin
             ROB[tail].is_branch <= dp_data_in.is_branch;
             ROB[tail].recovery_ptr <= dp_data_in.is_branch ? tail : '0;
             ROB[tail].rob_idx <= tail;
+            
+            `ifndef SYNTHESIS
+            $display("[ROB_ENQ] t=%0t tail=%0d pc=%h prd=%0d old_prd=%0d is_branch=%0d",
+                     $time,
+                     tail,
+                     dp_data_in.pc,
+                     dp_data_in.prd_addr,
+                     dp_data_in.old_prd_addr,
+                     dp_data_in.is_branch);
+        `endif
+        
             tail <= (tail==ROB_SIZE-1) ? 0 : tail + 4'd1;
         end
         if (ROB[head].valid && ROB[head].complete) begin
+            `ifndef SYNTHESIS
+            $display("[COMMIT] t=%0t head=%0d pc=%h prd=%0d old_prd=%0d is_branch=%0d mispred=%0d",
+                     $time, head, ROB[head].pc, ROB[head].prd_addr, ROB[head].old_prd_addr,
+                     ROB[head].is_branch, ROB[head].mispredict);
+            `endif
             rob_head_in.valid <= 1'b1;
             rob_head_in.rob_tag <= head;
             rob_head_in.mispredict <= ROB[head].mispredict;

@@ -5,6 +5,8 @@ module cpu_top(
     input clk,
     input rst
 );
+localparam int NUM_PREGS = (1 << PREG_IDX_WIDTH);
+logic [NUM_PREGS-1:0] preg_busy_table;
 
 // ====== Fetch =========
 fe_bus_t fe_data_in;
@@ -117,12 +119,13 @@ rename u_rename (
     .commit_valid     (rob_commit.valid),       
     
     // 2. 提交信息 (告诉 Rename 哪个旧物理寄存器可以释放了)
-    // 这里可能需要类型转换，或者确保 rob_commit_t 和 commit_to_rename_t 兼容
-    .commit_instr     ({rob_commit.old_prd_addr, rob_commit.rd_addr, rob_commit.RegWrite, rob_commit.is_branch}), 
+// ★ 用我们刚刚定义好的 commit_bus
+    .commit_instr  (commit_bus), 
 
     // 3. 分支预测失败 (用于恢复 Map Table Checkpoint)
     // 你的 cpu_top 后面定义了 flush_from_rob，可以直接用
-    .mispredict_valid (flush_from_rob)
+    .mispredict_valid (flush_from_rob),
+    .preg_busy_table(preg_busy_table)
 );
 
 // ====== RE -> DP Pipe (Buffer) =========
@@ -194,6 +197,8 @@ fu_to_prf_t [2:0] wb_packet;
 logic flush;
 fu_to_rob_t fu_wb;
 rob_commit_t rob_commit;
+commit_to_rename_t  commit_bus;
+
 
 ROB u_rob (
     .clk(clk),
@@ -212,6 +217,20 @@ ROB u_rob (
     .rob_commit(rob_commit)
 );
 
+assign commit_bus.old_prd_addr = rob_commit.old_prd_addr;
+
+// 如果你的 rob_commit 里真的有 rd_addr，就写：
+// assign commit_bus.rd_addr      = rob_commit.rd_addr;
+// 否则暂时全 0（rename 目前也没用 rd_addr）
+assign commit_bus.rd_addr      = '0;
+
+// RegWrite 我记得你在 ROB 里已经算过了：RegWrite = (old_prd_addr != 0)
+assign commit_bus.RegWrite    = rob_commit.RegWrite;
+
+// is_branch 现在 rename 也没用，但我们还是老老实实转发一下
+assign commit_bus.is_branch   = rob_commit.is_branch;
+
+
 // ====== RS_ALU =========
 logic            issue_valid_alu;
 dispatch_to_rs_t issue_instr_alu;
@@ -224,6 +243,7 @@ assign fu_ready_lsu = 1'b1;
 RS u_alu (
     .clk(clk),
     .rst(rst),
+    .busy_table(preg_busy_table),
 
     .dp_valid(rs_alu_valid),
     .dp_instr(rs_alu_instr),
@@ -244,6 +264,7 @@ logic            fu_ready_br;
 RS u_br (
     .clk(clk),
     .rst(rst),
+    .busy_table(preg_busy_table),
 
     .dp_valid(rs_br_valid),
     .dp_instr(rs_br_instr),
@@ -264,6 +285,7 @@ logic            fu_ready_lsu;
 RS u_lsu (
     .clk(clk),
     .rst(rst),
+    .busy_table(preg_busy_table),
 
     .dp_valid(rs_lsu_valid),
     .dp_instr(rs_lsu_instr),
@@ -458,6 +480,28 @@ assign fu_wb.branch_target = target_pc;
 
 // ROB->FU
 assign flush_from_rob = rob_commit.mispredict;
+
+always_ff @(posedge clk) begin
+    if (!rst) begin
+        for (int k = 0; k < 3; k++) begin
+            if (wb_valid[k]) begin
+                `ifndef SYNTHESIS
+                $display("[WB] t=%0t port=%0d prd=%0d data=%0d rob_tag=%0d",
+                         $time, k, wb_packet[k].prd_addr, wb_packet[k].data, wb_packet[k].rob_tag);
+                `endif
+            end
+        end
+    end
+end
+
+always_ff @(posedge clk) begin
+    if (!rst) begin
+        if (branch_flush) begin
+            $display("[CPU_TOP] t=%0t BRANCH_FLUSH redirect_pc=%h mispredict=%0d is_jalr=%0d br_rob_tag=%0d",
+                     $time, target_pc, mispredict, is_jalr, br_rob_tag);
+        end
+    end
+end
 
 
 endmodule

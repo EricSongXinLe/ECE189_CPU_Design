@@ -92,4 +92,32 @@ assign rs_alu_instr = new_rs_entry;
 assign rs_br_instr = new_rs_entry;
 assign rs_lsu_instr = new_rs_entry;
 
+always_ff @(posedge clk) begin
+    if (!rst) begin
+        if (dispatch_fire && buffer_instr_in.FU_type == 2'b01) begin
+            $display("[DISPATCH] t=%0t BR-IN pc=%h ps1=%0d ps2=%0d prd=%0d rob=%0d",
+                     $time,
+                     buffer_instr_in.pc,
+                     buffer_instr_in.ps1_addr,
+                     buffer_instr_in.ps2_addr,
+                     buffer_instr_in.prd_addr,
+                     buffer_instr_in.rob_tag);
+        end
+    end
+end
+
+always_ff @(posedge clk) begin
+    if (!rst) begin
+        if (dispatch_fire) begin
+            $display("[DISPATCH_DBG] t=%0t pc=%h FU=%0d prd=%0d rob=%0d",
+                     $time,
+                     buffer_instr_in.pc,
+                     buffer_instr_in.FU_type,
+                     buffer_instr_in.prd_addr,
+                     buffer_instr_in.rob_tag);
+        end
+    end
+end
+
+
 endmodule
