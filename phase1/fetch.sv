@@ -1,25 +1,3 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 11/01/2025 04:02:03 PM
-// Design Name: 
-// Module Name: fetch
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
 module fetch(
     input logic clk,
     input logic rst,
@@ -27,8 +5,8 @@ module fetch(
     input logic redirect, //JALR is unconditional, branch is conditional
     input logic [31:0] redirect_pc,
     
-    input logic ready,
-    output logic valid,
+    input logic ready, // ready to fetch another instruction
+    output logic valid, // fetch has a valid instruction
     
     output logic [31:0] pc_decode, //to decode
     output logic [31:0] inst_decode //to decode
