@@ -30,10 +30,12 @@ module lsu (
     assign mem_en   = valid_in;
     assign mem_addr = agu_addr;
     assign mem_we   = valid_in && instr_in.MemWrite;
-    initial $display("!!! LSU UPDATED VERSION COMPILED !!!");
-    // --- 处理 Store 数据的对齐 (Shift Logic) ---
+    
+    initial $display("!!! LSU FIXED VERSION COMPILED !!!");
+
+    // --- Shift Logic for Stores ---
     always_comb begin
-        mem_wdata = val2; // 默认
+        mem_wdata = val2; 
         case (agu_addr[1:0])
             2'b00: mem_wdata = val2;
             2'b01: mem_wdata = val2 << 8;
@@ -42,12 +44,9 @@ module lsu (
         endcase
     end
 
-    // --- Pipeline Registers for Latency ---
+    // --- Pipeline Registers ---
     logic valid_s1;
-    
-    // ★★★ 关键修复：类型必须是 dispatch_to_rs_t ★★★
     dispatch_to_rs_t instr_s1; 
-    
     logic [1:0] addr_low_s1;
 
     always_ff @(posedge clk) begin
@@ -57,36 +56,35 @@ module lsu (
             addr_low_s1 <= 2'b0; 
         end else begin
             valid_s1    <= valid_in;
-            // instr_s1    <= instr_in; // 类型一致，不会错位
+            // Capture all instruction info for Stage 2
             instr_s1.pc         <= instr_in.pc;
             instr_s1.immediate  <= instr_in.immediate;
-            instr_s1.prd_addr   <= instr_in.prd_addr;  // 确保 PRD 正确
-            instr_s1.rob_tag    <= instr_in.rob_tag;   // 确保 ROB 正确
+            instr_s1.prd_addr   <= instr_in.prd_addr;  
+            instr_s1.rob_tag    <= instr_in.rob_tag;
             instr_s1.MemRead    <= instr_in.MemRead;
             instr_s1.MemWrite   <= instr_in.MemWrite;
             instr_s1.ALUSrc     <= instr_in.ALUSrc;
             instr_s1.ALUOp      <= instr_in.ALUOp;
             instr_s1.funct7     <= instr_in.funct7;
             instr_s1.funct3     <= instr_in.funct3;
-            instr_s1.opcode     <= instr_in.opcode;    // 确保 Opcode 正确
+            instr_s1.opcode     <= instr_in.opcode;    
             instr_s1.FU_type    <= instr_in.FU_type;
             addr_low_s1 <= agu_addr[1:0];
         end
     end
 
     // --- Stage 2: Writeback ---
-    always_ff @(posedge clk) begin
-        if (rst || flush) begin
-            valid_out <= 1'b0;
-        end else begin
-            valid_out <= valid_s1;
-        end
-    end
+    // FIX: Removed always_ff for valid_out. 
+    // valid_out now aligns with instr_s1 and mem_rdata (1 cycle latency).
+    assign valid_out = valid_s1;
 
-    // --- Output Logic (支持 LBU/LB/LW 等) ---
+    // --- Output Logic ---
     always_comb begin
-    if (instr_s1.rob_tag == 0 && instr_s1.opcode != 0) 
-            $display("!!! CRITICAL WARNING: LSU instr_s1 has LOST info! Type mismatch is still active! !!!");
+        // The warning below might trigger for rob=0, which is normal. 
+        // You can ignore it if your system uses rob=0 as a valid tag.
+        // if (instr_s1.rob_tag == 0 && instr_s1.opcode != 0) 
+        //    $display("!!! WARNING: LSU processing instr with rob_tag=0 !!!");
+
         wb_packet.prd_addr = instr_s1.prd_addr;
         wb_packet.rob_tag  = instr_s1.rob_tag;
         wb_packet.data     = '0;
@@ -138,7 +136,7 @@ module lsu (
         end
     end
     
-    // Debug Print (Optional)
+    // Debug Print
     always_ff @(posedge clk) begin
         if (valid_in && !rst) begin
              $display("[LSU_DBG] t=%0t valid_in=1 rob=%0d prd=%0d op=%h", 
