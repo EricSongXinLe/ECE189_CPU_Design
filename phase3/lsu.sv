@@ -30,7 +30,7 @@ module lsu (
     assign mem_en   = valid_in;
     assign mem_addr = agu_addr;
     assign mem_we   = valid_in && instr_in.MemWrite;
-    
+    initial $display("!!! LSU UPDATED VERSION COMPILED !!!");
     // --- 处理 Store 数据的对齐 (Shift Logic) ---
     always_comb begin
         mem_wdata = val2; // 默认
@@ -57,7 +57,19 @@ module lsu (
             addr_low_s1 <= 2'b0; 
         end else begin
             valid_s1    <= valid_in;
-            instr_s1    <= instr_in; // 类型一致，不会错位
+            // instr_s1    <= instr_in; // 类型一致，不会错位
+            instr_s1.pc         <= instr_in.pc;
+            instr_s1.immediate  <= instr_in.immediate;
+            instr_s1.prd_addr   <= instr_in.prd_addr;  // 确保 PRD 正确
+            instr_s1.rob_tag    <= instr_in.rob_tag;   // 确保 ROB 正确
+            instr_s1.MemRead    <= instr_in.MemRead;
+            instr_s1.MemWrite   <= instr_in.MemWrite;
+            instr_s1.ALUSrc     <= instr_in.ALUSrc;
+            instr_s1.ALUOp      <= instr_in.ALUOp;
+            instr_s1.funct7     <= instr_in.funct7;
+            instr_s1.funct3     <= instr_in.funct3;
+            instr_s1.opcode     <= instr_in.opcode;    // 确保 Opcode 正确
+            instr_s1.FU_type    <= instr_in.FU_type;
             addr_low_s1 <= agu_addr[1:0];
         end
     end
@@ -73,6 +85,8 @@ module lsu (
 
     // --- Output Logic (支持 LBU/LB/LW 等) ---
     always_comb begin
+    if (instr_s1.rob_tag == 0 && instr_s1.opcode != 0) 
+            $display("!!! CRITICAL WARNING: LSU instr_s1 has LOST info! Type mismatch is still active! !!!");
         wb_packet.prd_addr = instr_s1.prd_addr;
         wb_packet.rob_tag  = instr_s1.rob_tag;
         wb_packet.data     = '0;
