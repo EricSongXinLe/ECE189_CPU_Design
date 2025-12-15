@@ -22,7 +22,7 @@ module fetch(
     logic [31:0] pc;
 
     // F2：和 icache 输出 inst 对齐的 PC
-    logic [31:0] pc_f2;
+    // logic [31:0] pc_f2;
 
     // 顺序执行时的 "下一条 PC"
     logic [31:0] nextpc;
@@ -58,6 +58,7 @@ module fetch(
     end
 
     // --------- F2：PC 打一拍，与 inst 对齐 ---------
+    /*
     always_ff @(posedge clk) begin
         if (rst) begin
             pc_f2 <= 32'b0;
@@ -72,6 +73,7 @@ module fetch(
         end
         // else: hold，保持 pc_f2 不变
     end
+    */
 
     // --------- F2 输出：送往 Decode 的 valid/pc/instr ---------
     always_ff @(posedge clk) begin
@@ -83,7 +85,7 @@ module fetch(
         else if (!hold) begin
             // 只有在不 hold 的时候才更新输出
             valid       <= 1'b1;
-            pc_decode   <= pc_f2;  // ★ 和 inst 对齐后的 PC
+            pc_decode   <= pc;  // ★ 和 inst 对齐后的 PC // Now change from pc_f2 to pc
             inst_decode <= inst;   // 来自 icache 的指令
         end
         // else: hold=1，保持上一拍的 valid/pc_decode/inst_decode
