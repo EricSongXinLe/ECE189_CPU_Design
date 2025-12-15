@@ -95,6 +95,7 @@ always_comb begin
             next_signals.ALUOp    = 2'b00;
             next_signals.FU_type  = 2'b10;
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
+            next_signals.RegWrite = 1'b0;
             next_signals.rd_addr = 5'b0;  // 关键修复：存储指令不写寄存器
         end
 

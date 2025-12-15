@@ -45,6 +45,7 @@ skid_buffer_struct #(.T(fe_bus_t))
 u_fe_de (
     .clk        (clk),
     .reset      (rst),
+    .flush(branch_flush),
     // upstream: fetch <-> skid
     .valid_in   (fe_valid_in),
     .ready_out   (fe_ready_out),
@@ -83,6 +84,7 @@ skid_buffer_struct #(.T(decode_to_rename_t))
 u_de_re (
     .clk        (clk),
     .reset      (rst),
+    .flush(branch_flush),
     // upstream: decode <-> skid
     .valid_in   (de_valid_in),
     .ready_out   (re_ready_out),
@@ -137,7 +139,7 @@ fifo_pipeline #(.T(rename_to_dispatch_t), .DEPTH(2))
 u_buffer_fifo (
     .clk(clk),
     .reset(rst),
-
+    .flush(branch_flush),
     .valid_in(re_valid_in),
     .ready_out(dp_ready_out),
     .write_data(re_data_in),
@@ -413,13 +415,15 @@ logic flush_from_rob;
 logic        dmem_en;
 logic [31:0] dmem_addr;
 logic [31:0] dmem_rdata;
-
+logic        dmem_we;
+logic [31:0] dmem_wdata;
 //dMem instantiation
 dmem u_dmem (
     .clk(clk),
     .en(dmem_en),
+    .we(dmem_we),
     .addr(dmem_addr),
-
+    .wdata(dmem_wdata),
     .data(dmem_rdata)
 );
 
@@ -451,7 +455,9 @@ execute u_execute (
 
     // ---- Memory ----
     .dmem_en(dmem_en),
+    .dmem_we(dmem_we),
     .dmem_addr(dmem_addr),
+    .dmem_wdata(dmem_wdata),
     .dmem_rdata(dmem_rdata),
 
     // ---- CDB outputs ----

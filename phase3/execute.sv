@@ -27,7 +27,9 @@ module execute (
 
     // --- Memory Interface ---
     output logic                dmem_en,
+    output logic                dmem_we,
     output logic [31:0]         dmem_addr,
+    output logic [31:0]         dmem_wdata,
     input  logic [31:0]         dmem_rdata,
 
     // --- Writeback Outputs (CDBs) ---
@@ -65,7 +67,9 @@ module execute (
         .val1       (lsu_val1),
         .val2       (lsu_val2),
         .mem_en     (dmem_en),
+        .mem_we     (dmem_we),
         .mem_addr   (dmem_addr),
+        .mem_wdata  (dmem_wdata),
         .mem_rdata  (dmem_rdata),
         .valid_out  (wb_valid[1]),
         .wb_packet  (wb_packet[1])
