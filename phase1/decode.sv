@@ -115,6 +115,7 @@ always_comb begin
             next_signals.ALUOp    = 2'b00;
             next_signals.FU_type  = 2'b01;
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
+            next_signals.is_branch = 1'b1;
         end
 
         // U-type (LUI)

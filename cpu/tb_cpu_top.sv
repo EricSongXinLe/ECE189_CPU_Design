@@ -31,7 +31,7 @@ module tb_cpu_top;
 
         // 让仿真跑一段时间 (比如 500ns)
         // 这个时间足够跑完我们那 3 条指令了
-        #500;
+        #20000;
 
         // 结束仿真
         $display("=== Simulation Finished ===");
