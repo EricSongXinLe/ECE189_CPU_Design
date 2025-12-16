@@ -9,7 +9,7 @@ module RS_ORDERED #(
 )(
     input logic clk,
     input logic rst,
-
+    input logic flush,
     input  logic [(1<<PREG_ID_WIDTH)-1:0] busy_table,
 
     // --- Dispatch Interface ---
@@ -111,7 +111,7 @@ module RS_ORDERED #(
     end
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        if (rst || flush) begin
             head  <= '0;
             tail  <= '0;
             count <= '0;

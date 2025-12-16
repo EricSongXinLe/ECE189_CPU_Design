@@ -249,6 +249,7 @@ assign fu_ready_lsu = 1'b1;
 RS u_alu (
     .clk(clk),
     .rst(rst),
+    .flush(flush),
     .busy_table(preg_busy_table),
 
     .dp_valid(rs_alu_valid),
@@ -270,6 +271,7 @@ logic            fu_ready_br;
 RS u_br (
     .clk(clk),
     .rst(rst),
+    .flush(flush),
     .busy_table(preg_busy_table),
 
     .dp_valid(rs_br_valid),
@@ -291,6 +293,7 @@ logic            fu_ready_lsu;
 RS_ORDERED u_lsu (
     .clk(clk),
     .rst(rst),
+    .flush(flush),
     .busy_table(preg_busy_table),
 
     .dp_valid(rs_lsu_valid),

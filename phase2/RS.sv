@@ -9,7 +9,7 @@ module RS #(
 )(
     input logic clk,
     input logic rst,
-
+    input logic flush,
     // --- 来自全局 scoreboard 的 busy_table ---
     // busy_table[preg_id] == 1 表示这个物理寄存器还在等待写回
     input  logic [(1<<PREG_ID_WIDTH)-1:0] busy_table,
@@ -155,7 +155,7 @@ module RS #(
     end
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        if (rst || flush) begin
             for (int i = 0; i < RS_SIZE; i++) begin
                 rs_array[i].valid              <= 1'b0;
                 rs_array[i].instr              <= '0;
