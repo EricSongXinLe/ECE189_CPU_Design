@@ -24,6 +24,13 @@ module execute (
     input  dispatch_to_rs_t lsu_issue_instr,
     input  logic [31:0]         lsu_val1,
     input  logic [31:0]         lsu_val2,
+    
+    // LSQ Interface
+    input  logic                lsu_alloc_valid,      // 来自 Dispatch
+    input  logic [SQ_IDX_WIDTH-1:0] lsu_alloc_sq_idx, // 来自 Dispatch
+    input  logic                commit_valid,         // 来自 ROB
+    input  logic                commit_mem_write,     // 来自 ROB
+    output logic                lsu_busy,
 
     // --- Memory Interface ---
     output logic                dmem_en,
@@ -62,10 +69,15 @@ module execute (
         .clk        (clk),
         .rst        (rst),
         .flush      (flush),
+        .alloc_valid (lsu_alloc_valid),
+        .alloc_sq_idx(lsu_alloc_sq_idx),
         .valid_in   (lsu_issue_valid),
         .instr_in   (lsu_issue_instr),
         .val1       (lsu_val1),
         .val2       (lsu_val2),
+        .commit_valid     (commit_valid),
+        .commit_mem_write (commit_mem_write),
+        .lsu_busy   (lsu_busy),
         .mem_en     (dmem_en),
         .mem_we     (dmem_we),
         .mem_addr   (dmem_addr),

@@ -1,6 +1,6 @@
 module dispatch (
     input logic clk, rst,
-
+    input logic flush,
     //rename <-> dispatch
     output logic dp_ready_out, //dispatch/buffer has space to take in new instr
     input logic buffer_valid_in, //buffer has new instr
@@ -22,9 +22,32 @@ module dispatch (
     
     input logic rs_lsu_full,
     output logic rs_lsu_valid,
-    output dispatch_to_rs_t rs_lsu_instr
+    output dispatch_to_rs_t rs_lsu_instr,
+    output logic       lsu_alloc_valid,
+    output logic [SQ_IDX_WIDTH-1:0] lsu_alloc_sq_idx
 );
-
+logic [SQ_IDX_WIDTH-1:0] sq_tail;
+logic dispatch_fire;
+//Determine RS/ROB Availability
+logic rs_ready, rob_ready;
+always_comb begin
+    case (buffer_instr_in.FU_type)
+        2'b00: rs_ready = !rs_alu_full; //ALU
+        2'b01: rs_ready = !rs_br_full; //BR
+        2'b10: rs_ready = !rs_lsu_full; //LSU
+        default: rs_ready = 0;
+    endcase
+end
+assign rob_ready = !rob_full;
+assign dp_ready_out = rs_ready && rob_ready;
+assign dispatch_fire = buffer_valid_in && rs_ready && rob_ready;
+    always_ff @(posedge clk) begin
+        if (rst || flush) begin
+            sq_tail <= '0;
+        end else if (dispatch_fire && buffer_instr_in.MemWrite) begin
+            sq_tail <= sq_tail + 1; // 只有 Store 指令才推进指针
+        end
+    end
 //RS Entry
 dispatch_to_rs_t new_rs_entry;
 always_comb begin
@@ -49,6 +72,7 @@ always_comb begin
         new_rs_entry.funct7     = buffer_instr_in.funct7;
         new_rs_entry.opcode     = buffer_instr_in.opcode;
         new_rs_entry.FU_type    = buffer_instr_in.FU_type;
+        new_rs_entry.sq_idx = sq_tail;
     end
 end
 //ROB Entry
@@ -61,25 +85,11 @@ always_comb begin
         new_rob_entry.old_prd_addr = buffer_instr_in.old_prd_addr;
         new_rob_entry.rob_tag      = buffer_instr_in.rob_tag;
         new_rob_entry.is_branch  = buffer_instr_in.is_branch;
+        new_rob_entry.MemWrite     = buffer_instr_in.MemWrite;
     end
 end
 
-//Determine RS/ROB Availability
-logic rs_ready, rob_ready;
-always_comb begin
-    case (buffer_instr_in.FU_type)
-        2'b00: rs_ready = !rs_alu_full; //ALU
-        2'b01: rs_ready = !rs_br_full; //BR
-        2'b10: rs_ready = !rs_lsu_full; //LSU
-        default: rs_ready = 0;
-    endcase
-end
-assign rob_ready = !rob_full;
 
-assign dp_ready_out = rs_ready && rob_ready;
-
-logic dispatch_fire;
-assign dispatch_fire = buffer_valid_in && rs_ready && rob_ready;
 
 assign rob_valid = dispatch_fire;
 assign rob_instr = new_rob_entry;
@@ -91,6 +101,9 @@ assign rs_lsu_valid = dispatch_fire && (buffer_instr_in.FU_type == 2'b10);
 assign rs_alu_instr = new_rs_entry;
 assign rs_br_instr = new_rs_entry;
 assign rs_lsu_instr = new_rs_entry;
+
+assign lsu_alloc_valid = dispatch_fire && buffer_instr_in.MemWrite;
+assign lsu_alloc_sq_idx = sq_tail;
 
 always_ff @(posedge clk) begin
     if (!rst) begin

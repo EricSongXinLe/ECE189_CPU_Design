@@ -165,6 +165,10 @@ logic rs_lsu_full;
 logic rs_lsu_valid;
 dispatch_to_rs_t rs_lsu_instr;
 
+logic        lsu_alloc_valid;
+logic [SQ_IDX_WIDTH-1:0] lsu_alloc_sq_idx;
+logic        lsu_busy;
+
 dispatch u_dispatch (
     .clk(clk),
     .rst(rst),
@@ -189,7 +193,11 @@ dispatch u_dispatch (
 
     .rs_lsu_full(rs_lsu_full),
     .rs_lsu_valid(rs_lsu_valid),
-    .rs_lsu_instr(rs_lsu_instr)
+    .rs_lsu_instr(rs_lsu_instr),
+
+    .flush(flush), // ★ 别忘了连 flush
+    .lsu_alloc_valid(lsu_alloc_valid),
+    .lsu_alloc_sq_idx(lsu_alloc_sq_idx)
 );
 
 // ====== ROB =========
@@ -244,7 +252,7 @@ logic            fu_ready_alu;
 
 assign fu_ready_alu = 1'b1;
 assign fu_ready_br  = 1'b1;
-assign fu_ready_lsu = 1'b1;
+// assign fu_ready_lsu = !lsu_busy;
 
 RS u_alu (
     .clk(clk),
@@ -288,6 +296,8 @@ RS u_br (
 logic            issue_valid_lsu;
 dispatch_to_rs_t issue_instr_lsu;
 logic            fu_ready_lsu; 
+// logic lsu_busy; 
+// assign fu_ready_lsu = !lsu_busy;
 RS u_lsu (
     .clk(clk),
     .rst(rst),
@@ -456,6 +466,13 @@ execute u_execute (
     .lsu_issue_instr(issue_instr_lsu),
     .lsu_val1(lsu_op1_final),
     .lsu_val2(lsu_op2_final),
+
+    // LSQ
+    .lsu_alloc_valid   (lsu_alloc_valid),      // 连 Dispatch
+    .lsu_alloc_sq_idx  (lsu_alloc_sq_idx),     // 连 Dispatch
+    .commit_valid      (rob_commit.valid),     // 连 ROB
+    .commit_mem_write  (rob_commit.MemWrite),  // 连 ROB
+    .lsu_busy          (lsu_busy),             // 输出到 RS
 
     // ---- Memory ----
     .dmem_en(dmem_en),

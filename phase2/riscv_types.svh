@@ -26,6 +26,8 @@ parameter RS_LSU_READ_PORTS = 2;
 parameter RS_BRU_READ_PORTS = 2;
 parameter PRF_READ_PORTS = RS_ALU_READ_PORTS + RS_LSU_READ_PORTS + RS_BRU_READ_PORTS; // Total 6
 
+parameter SQ_SIZE = 8;
+parameter SQ_IDX_WIDTH = $clog2(SQ_SIZE);
 
 // --- Data Structures ---
 // ---------- FE <-> DE bus payload ----------
@@ -125,6 +127,9 @@ typedef struct packed {
     // ROB tag for this instruction
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
     
+    // Store Queue Ptr 
+    logic [SQ_IDX_WIDTH-1:0] sq_idx;
+
     // Pass-through all other control signals
     logic        MemRead;
     logic        MemWrite;
@@ -174,7 +179,8 @@ typedef struct packed {
     
     logic                      mispredict;     // <--- 必须有这一行！
     logic [31:0]               branch_target;  // <--- 还有这一行
-    logic                      is_branch;      
+    logic                      is_branch;
+    logic                      MemWrite;      
 } rob_commit_t;
 
  

@@ -10,6 +10,7 @@ typedef struct packed {
     logic [ROB_IDX_WIDTH-1:0] rob_idx;
     logic mispredict;
     logic [31:0] branch_target;
+    logic MemWrite;
 } rob_entry;
 
 
@@ -85,7 +86,7 @@ always_ff @(posedge clk) begin
             ROB[tail].is_branch <= dp_data_in.is_branch;
             ROB[tail].recovery_ptr <= dp_data_in.is_branch ? tail : '0;
             ROB[tail].rob_idx <= tail;
-            
+            ROB[tail].MemWrite <= dp_data_in.MemWrite;
             `ifndef SYNTHESIS
             $display("[ROB_ENQ] t=%0t tail=%0d pc=%h prd=%0d old_prd=%0d is_branch=%0d",
                      $time,
@@ -108,7 +109,7 @@ always_ff @(posedge clk) begin
             rob_head_in.rob_tag <= head;
             rob_head_in.mispredict <= ROB[head].mispredict;
             rob_head_in.branch_target <= ROB[head].branch_target;
-            
+            rob_head_in.MemWrite <= ROB[head].MemWrite;
             rob_head_in.old_prd_addr  <= ROB[head].old_prd_addr;
             rob_head_in.is_branch     <= ROB[head].is_branch;
                 // 注意：你的 rob_entry 里似乎没存 RegWrite？
