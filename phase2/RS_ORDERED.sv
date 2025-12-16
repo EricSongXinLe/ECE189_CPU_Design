@@ -15,6 +15,7 @@ module RS_ORDERED #(
     // --- Dispatch Interface ---
     input  logic                dp_valid,
     input  dispatch_to_rs_t     dp_instr,
+    input logic flush,
     output logic                rs_full, 
 
     // --- Writeback Interface ---
@@ -43,6 +44,7 @@ module RS_ORDERED #(
     // --- 1. Allocation Logic (FIFO Tail) ---
     // Full condition for FIFO
     assign rs_full = (count == RS_SIZE);
+    
 
     // --- 2. Wakeup Logic (Combinational) ---
     // We strictly need to check if HEAD is ready, but we update all for simplicity/debug
@@ -87,7 +89,7 @@ module RS_ORDERED #(
     logic head_ready;
     assign head_ready = (count > 0) && next_op1_ready[head] && next_op2_ready[head];
     
-    assign issue_valid = head_ready && fu_ready;
+    assign issue_valid = head_ready && fu_ready && !flush;
     assign issue_instr = rs_array[head].instr;
 
     // --- 4. State Update & FIFO Management ---
@@ -111,7 +113,7 @@ module RS_ORDERED #(
     end
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        if (rst || flush) begin
             head  <= '0;
             tail  <= '0;
             count <= '0;
