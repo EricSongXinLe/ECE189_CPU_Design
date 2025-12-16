@@ -288,7 +288,7 @@ RS u_br (
 logic            issue_valid_lsu;
 dispatch_to_rs_t issue_instr_lsu;
 logic            fu_ready_lsu; 
-RS u_lsu (
+RS_ORDERED u_lsu (
     .clk(clk),
     .rst(rst),
     .busy_table(preg_busy_table),

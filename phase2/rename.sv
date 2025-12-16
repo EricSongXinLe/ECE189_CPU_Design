@@ -330,4 +330,10 @@ always_ff @(posedge clk) begin
     end
 end
 
+always_ff @(posedge clk) begin
+    if (do_rename && de_instr_in.rd_addr == 29)
+        $display("Map Table [29] updating to %d", rn_instr_comb.prd_addr);
+    if (do_rename && de_instr_in.rs1_addr == 29)
+        $display("Instruction reading x29 mapped to %d", map_table[29]);
+end
 endmodule
