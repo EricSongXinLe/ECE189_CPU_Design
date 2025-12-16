@@ -205,6 +205,7 @@ assign fu_wb.branch_target = target_pc;
 assign fu_wb.rob_tag = br_rob_tag;
 logic branch_update_en;
 assign branch_update_en = issue_valid_br;
+logic [ROB_IDX_WIDTH-1:0] rob_head_ptr;
 ROB u_rob (
     .clk(clk),
     .rst(rst),
@@ -220,7 +221,8 @@ ROB u_rob (
     .wb_packet(wb_packet),
 
     .rob_full(rob_full),
-    .rob_commit(rob_commit)
+    .rob_commit(rob_commit),
+    .head_out(rob_head_ptr)
 );
 
 assign commit_bus.old_prd_addr = rob_commit.old_prd_addr;
@@ -260,7 +262,8 @@ RS u_alu (
 
     .issue_valid(issue_valid_alu),
     .issue_instr(issue_instr_alu),
-    .fu_ready(fu_ready_alu)  
+    .fu_ready(fu_ready_alu),
+    .rob_head(rob_head_ptr)
 );
 
 // ====== RS_BR =========
@@ -281,7 +284,8 @@ RS u_br (
 
     .issue_valid(issue_valid_br),
     .issue_instr(issue_instr_br),
-    .fu_ready(fu_ready_br)  
+    .fu_ready(fu_ready_br),
+    .rob_head(rob_head_ptr)  
 );
 
 // ====== RS_LSU =========
@@ -302,7 +306,8 @@ RS u_lsu (
 
     .issue_valid(issue_valid_lsu),
     .issue_instr(issue_instr_lsu),
-    .fu_ready(fu_ready_lsu)  
+    .fu_ready(fu_ready_lsu),
+    .rob_head(rob_head_ptr) 
 );
 
 

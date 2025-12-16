@@ -31,7 +31,8 @@ module ROB #(
     input fu_to_prf_t [2:0] wb_packet,
 
     output logic rob_full,
-    output rob_commit_t rob_commit
+    output rob_commit_t rob_commit,
+    output logic [ROB_IDX_WIDTH-1:0] head_out
 );
 
 rob_entry ROB [0:ROB_SIZE-1];
@@ -122,5 +123,5 @@ always_ff @(posedge clk) begin
 end
 
 assign rob_commit = rob_head_in;
-
+assign head_out   = head;
 endmodule
