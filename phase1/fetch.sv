@@ -82,6 +82,11 @@ module fetch(
             pc_decode   <= 32'b0;
             inst_decode <= 32'b0;
         end
+        else if (redirect) begin
+            valid       <= 1'b0;
+            pc_decode   <= 32'b0; // 可选，清零方便调试
+            inst_decode <= 32'b0; // 可选
+        end
         else if (!hold) begin
             // 只有在不 hold 的时候才更新输出
             valid       <= 1'b1;
