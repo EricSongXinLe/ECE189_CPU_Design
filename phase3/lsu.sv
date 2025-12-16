@@ -75,7 +75,7 @@ module lsu (
             instr_s1    <= '0;
             addr_low_s1 <= 2'b0; 
         end else begin
-            valid_s1    <= valid_in && !flush;
+            valid_s1    <= valid_in;
             // Capture all instruction info for Stage 2
             instr_s1.pc         <= instr_in.pc;
             instr_s1.immediate  <= instr_in.immediate;
