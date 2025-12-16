@@ -26,6 +26,7 @@ module dmem #(
             if (we) begin
                 // 写操作 (简化版：只支持按字写入，如果需要支持 SH/SB 需要掩码)
                 // 25swr.txt 里的 SH/SB 可能需要更复杂的逻辑，但先跑通 SW
+                $display("[DMEM] WRITE addr=%h (idx=%0d) val=%h", addr, addr[11:2], wdata);
                 dmem[addr[11:2]] <= wdata;
             end else begin
                 // 读操作
