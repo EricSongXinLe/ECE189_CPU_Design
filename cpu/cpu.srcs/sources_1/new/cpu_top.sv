@@ -291,7 +291,6 @@ logic            fu_ready_lsu;
 RS_ORDERED u_lsu (
     .clk(clk),
     .rst(rst),
-    .flush(flush),
     .busy_table(preg_busy_table),
 
     .dp_valid(rs_lsu_valid),
