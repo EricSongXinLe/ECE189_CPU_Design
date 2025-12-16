@@ -9,6 +9,9 @@ parameter AREG_IDX_WIDTH = $clog2(ARCH_REGS); // 5
 parameter PHYS_REGS = 128;
 parameter PREG_IDX_WIDTH = $clog2(PHYS_REGS); // 7
 
+parameter FREE_MAX = PHYS_REGS-ARCH_REGS;
+parameter FREE_CNT_W = $clog2(FREE_MAX + 1);
+
 // --- Reorder Buffer Parameters ---
 parameter ROB_SIZE = 16;
 parameter ROB_IDX_WIDTH = $clog2(ROB_SIZE); // 4
@@ -43,6 +46,10 @@ typedef struct packed {
     logic [AREG_IDX_WIDTH-1:0] rs1_addr;
     logic [AREG_IDX_WIDTH-1:0] rs2_addr;
     logic [AREG_IDX_WIDTH-1:0] rd_addr;
+    
+    logic uses_rs1;
+    logic uses_rs2;
+    logic uses_rd;
 
     // Control Signals
     logic        RegWrite;   // This instruction writes to a register
@@ -51,6 +58,7 @@ typedef struct packed {
     logic        MemToReg;
     logic        ALUSrc;
     logic        is_branch;  // This is a branch (for checkpointing)
+    logic        is_jalr;
     logic [1:0]  ALUOp;
     
     // Pass-throughs
@@ -86,6 +94,7 @@ typedef struct packed {
     logic        MemToReg;
     logic        ALUSrc;
     logic        is_branch;
+    logic        is_jalr;
     logic [1:0]  ALUOp;
     logic [6:0]  funct7;
     logic [2:0]  funct3;
@@ -104,7 +113,8 @@ typedef struct packed {
 
 // Data from ROB (Commit) to Rename (for freeing registers)
 typedef struct packed {
-    logic [PREG_IDX_WIDTH-1:0] old_prd_addr; // Physical reg to be freed
+    logic [PREG_IDX_WIDTH-1:0] prd_addr; // Physical *dest* reg to be freed
+    logic uses_rd;
     logic [AREG_IDX_WIDTH-1:0] rd_addr;        // Architectural dest reg
     logic                      RegWrite;
     logic                      is_branch;      // To free checkpoints
@@ -157,5 +167,12 @@ typedef struct packed {
     logic [31:0] branch_target;
 } fu_to_rob_t;
  
+typedef struct packed {
+    logic commit_valid;
+    logic [ROB_IDX_WIDTH-1:0] commit_idx;
+    logic mispredict;
+    logic [31:0] branch_target;
+}
+rob_commit_t;
 
 `endif

@@ -21,8 +21,8 @@ module rename (
     input  logic clk,
     input  logic rst,
 
-    input logic                wb_valid [3],     
-    input fu_to_prf_t          wb_packet [3],
+    input logic [2:0] wb_valid,     
+    input fu_to_prf_t [2:0] wb_packet,
 
     // --- Upstream (from Decode) ---
     input  logic                de_valid,

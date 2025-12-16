@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module fetch(
     input logic clk,
     input logic rst,

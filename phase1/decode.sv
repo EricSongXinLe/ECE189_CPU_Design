@@ -1,4 +1,4 @@
-`include "riscv_types.svh"
+`include "../phase2/riscv_types.svh"
 
 module decode(
     input  logic        clk,
@@ -36,6 +36,11 @@ module decode(
         next_signals.rs1_addr = rs1;
         next_signals.rs2_addr = rs2;
         next_signals.rd_addr = rd;
+
+        next_signals.uses_rs1 = 1'b0;
+        next_signals.uses_rs2 = 1'b0;
+        next_signals.uses_rd  = 1'b0;
+
         next_signals.funct3 = funct3;
         next_signals.funct7 = funct7;
         next_signals.opcode = opcode;
@@ -43,79 +48,92 @@ module decode(
         
         // --- Main Control & Immediate Generation ---
         case (opcode)
-            // R-type (ADD, SUB, SRA, AND)
-            'h33: begin // 0b0110011
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUOp    = 2'b10;
-                next_signals.FU_type = 2'b00;
-                // immediate = 0 (default)
-            end
+        'h33: begin // R-type
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUOp    = 2'b10;
+            next_signals.FU_type  = 2'b00;
 
-            // I-type (ALU: ADDI, SLTIU, ORI)
-            'h13: begin // 0b0010011
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b11;
-                next_signals.FU_type = 2'b00;
-                // I-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
-            end
+            next_signals.uses_rs1 = 1'b1;
+            next_signals.uses_rs2 = 1'b1;
+            next_signals.uses_rd  = (rd != 5'd0);
+        end
 
-            // I-type (Load: LW, LBU)
-            'h03: begin // 0b0000011
-                next_signals.RegWrite = 1'b1;
-                next_signals.MemRead  = 1'b1;
-                next_signals.MemToReg = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b00;
-                next_signals.FU_type  = 2'b10;
-                // I-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
-            end
+        'h13: begin // I-type ALU (ADDI/SLTIU/ORI)
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b11;
+            next_signals.FU_type  = 2'b00;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
 
-            // S-type (Store: SW, SH)
-            'h23: begin // 0b0100011
-                next_signals.MemWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b00;
-                next_signals.FU_type  = 2'b10;
-                // S-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
-            end
+            next_signals.uses_rs1 = 1'b1;
+            next_signals.uses_rs2 = 1'b0;
+            next_signals.uses_rd  = (rd != 5'd0);
+        end
 
-            // B-type (Branch: BNE)
-            'h63: begin // 0b1100011
-                next_signals.is_branch = 1'b1;
-                next_signals.ALUOp  = 2'b01;
-                next_signals.FU_type  = 2'b01;
-                // B-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[7], fe_instr[30:25], fe_instr[11:8], 1'b0};
-            end
+        'h03: begin // Load (LW/LBU)
+            next_signals.RegWrite = 1'b1;
+            next_signals.MemRead  = 1'b1;
+            next_signals.MemToReg = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00;
+            next_signals.FU_type  = 2'b10;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
 
-            // I-type (JALR)
-            'h67: begin // 0b1100111
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.ALUOp    = 2'b00;
-                next_signals.FU_type  = 2'b01;
-                // I-type immediate: sign-extend from bit 31
-                next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
-            end
+            next_signals.uses_rs1 = 1'b1;      // base
+            next_signals.uses_rs2 = 1'b0;
+            next_signals.uses_rd  = (rd != 5'd0);
+        end
 
-            // U-type (LUI)
-            'h37: begin // 0b0110111
-                next_signals.RegWrite = 1'b1;
-                next_signals.ALUSrc   = 1'b1;
-                next_signals.FU_type  = 2'b00;
-                // U-type immediate: 
-                next_signals.immediate = {fe_instr[31:12]};
-            end
-            
-            default: begin
-                // Default case: treat as NOP (all signals 0)
-                // This is already handled by the default assignment
-            end
+        'h23: begin // Store (SW/SH)
+            next_signals.MemWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00;
+            next_signals.FU_type  = 2'b10;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
+
+            next_signals.uses_rs1 = 1'b1;      // base
+            next_signals.uses_rs2 = 1'b1;      // store data
+            next_signals.uses_rd  = 1'b0;
+        end
+
+        'h63: begin // Branch (BNE)
+            next_signals.is_branch = 1'b1;
+            next_signals.ALUOp     = 2'b01;
+            next_signals.FU_type   = 2'b01;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[7], fe_instr[30:25], fe_instr[11:8], 1'b0};
+
+            next_signals.uses_rs1 = 1'b1;
+            next_signals.uses_rs2 = 1'b1;
+            next_signals.uses_rd  = 1'b0;
+        end
+
+        'h67: begin // JALR
+            next_signals.is_jalr   = 1'b1;
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00;
+            next_signals.FU_type  = 2'b01;
+            next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
+
+            next_signals.uses_rs1 = 1'b1;      // base (rs1)
+            next_signals.uses_rs2 = 1'b0;
+            next_signals.uses_rd  = (rd != 5'd0); // writes link unless rd=x0
+        end
+
+        'h37: begin // LUI
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.FU_type  = 2'b00;
+            next_signals.immediate = {fe_instr[31:12]};
+
+            next_signals.uses_rs1 = 1'b0;
+            next_signals.uses_rs2 = 1'b0;
+            next_signals.uses_rd  = (rd != 5'd0);
+        end
+
+        default: begin end
         endcase
+
     end
 
     assign de_valid = fe_valid;
