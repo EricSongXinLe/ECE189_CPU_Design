@@ -22,6 +22,9 @@ always_ff @(posedge clk) begin
     if(rst)begin
         valid <= 0;
         pc <= 32'b0;
+     end else if (!valid) begin
+        valid <= 1'b1;
+        pc <= pc;
     end else if (redirect) begin
         valid <= 1'b1;
         pc <= redirect_pc;

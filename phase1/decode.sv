@@ -1,34 +1,4 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Engineer: Yike Shi
-// 
-// Create Date: 11/01/2025 04:02:03 PM
-// Design Name: RISC-V 5-Stage Pipeline
-// Module Name: decode
-// Project Name: ECE 189
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// This module implements the Decode (DE) stage of the pipeline.
-// It decodes RISC-V instructions based on the provided C++ simulator logic
-// and acts as a pipeline register with a full valid/ready handshake.
-//
-// Instructions Supported:
-// R-type: ADD, SUB, SRA, AND
-// I-type: ADDI, SLTIU, ORI, LW, LBU, JALR
-// S-type: SW, SH
-// B-type: BNE
-// U-type: LUI
-//
-// Dependencies: None
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Revision 1.00 - Implemented full decode logic and pipeline register
-// Additional Comments:
-// Based on C++ simulator from CPU.cpp and CPU.h I wrote in CA1
-//
-//////////////////////////////////////////////////////////////////////////////////
+`include "riscv_types.svh"
 
 module decode(
     input  logic        clk,
@@ -46,14 +16,6 @@ module decode(
     output decode_to_rename_t de_signals_out // Our decoded output signals
 );
 
-    // --- Internal Registers ---
-    // These registers hold the decoded instruction and control signals,
-    // forming the pipeline register between Decode and Execute.
-    logic de_valid_reg;
-    decode_to_rename_t de_signals_reg;
-
-    // This signal holds the combinational-ly decoded signals
-    // from the *current* instruction from Fetch.
     decode_to_rename_t next_signals;
 
     always_comb begin
@@ -146,7 +108,7 @@ module decode(
                 next_signals.ALUSrc   = 1'b1;
                 next_signals.FU_type  = 2'b00;
                 // U-type immediate: 
-                next_signals.immediate = {fe_instr[31:12], 12'h000};
+                next_signals.immediate = {fe_instr[31:12]};
             end
             
             default: begin
@@ -156,49 +118,8 @@ module decode(
         endcase
     end
 
-
-    // --- Pipeline Register & Handshake Logic ---
-
-    // `de_ready`: We are ready to accept a new instruction from Fetch if...
-    // 1. Our pipeline register is currently empty (!de_valid_reg), OR
-    // 2. The Execute stage is ready to take our current instruction (ex_ready)
-    //    (This allows data to "flow through" combinational-ly)
-    assign de_ready = !de_valid_reg || ex_ready;
-
-    // `load_en`: We should load a new instruction into our register if...
-    // 1. Fetch has a valid instruction for us (fe_valid), AND
-    // 2. We are ready to accept it (de_ready)
-    logic load_en = fe_valid && de_ready;
-
-    // The output `de_valid` is simply the registered valid bit
-    assign de_valid = de_valid_reg;
-    
-    // The output signals are the registered signals
-    assign de_signals_out = de_signals_reg;
-
-    // This is the pipeline register
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            // On reset, the pipeline stage is empty (invalid)
-            de_valid_reg   <= 1'b0;
-            de_signals_reg <= '0;
-        end
-        else if (load_en) begin
-            // Load: A new valid instruction is coming from Fetch
-            // and we are ready for it. Latch the combinational-ly
-            // decoded signals and mark ourselves as 'valid'.
-            de_valid_reg   <= 1'b1;
-            de_signals_reg <= next_signals;
-        end
-        else if (de_valid_reg && ex_ready) begin
-            // Clear: The Execute stage is taking our data, and no new
-            // data is coming in. We become empty (invalid).
-            de_valid_reg <= 1'b0;
-        end
-        // else:
-        // Stall: (de_valid_reg && !ex_ready). We are holding a valid
-        // instruction, but Execute is not ready. We hold our state.
-        // `de_ready` becomes '0', stalling the Fetch stage.
-    end
+    assign de_valid = fe_valid;
+    assign de_ready = re_ready;
+    assign de_signals_out = fe_valid? next_signals : '0;
 
 endmodule
