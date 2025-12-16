@@ -19,12 +19,12 @@ logic hold;
 
 assign hold = stall || (valid && !ready);
 
-always_comb begin   
-    if (redirect) nextpc = redirect_pc;
+always_comb begin
+    if (redirect) nextpc = redirect_pc;   
     else nextpc = pc + 32'd4;
 end
 
-always @(posedge clk) begin
+always_ff @(posedge clk) begin
     if(rst)begin
         pc <= 32'b0;
     end else if (!hold) begin
