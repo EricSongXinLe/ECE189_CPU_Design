@@ -47,7 +47,18 @@ module fetch_icache_tb;
         repeat (5) @(posedge clk);
         rst = 0;
         
-        repeat (50) @(posedge clk);
+        repeat (10) @(posedge clk);
+        
+        //test stall
+        stall = 1;
+        repeat (5) @(posedge clk);
+        stall = 0;
+        
+        //test redirect
+          redirect_pc = 32'h00000004;
+          redirect = 1;
+          @(negedge clk)
+          redirect = 0;
         
         repeat (10) @(posedge clk);
         $finish;
@@ -64,7 +75,7 @@ module fetch_icache_tb;
             .inst_decode(inst_decode)
     );
     always @(posedge clk) begin
-        if (!rst && valid && ready && !stall) begin
+        if (!rst && valid && ready) begin
             $display("pc=%08h inst=%08h", pc_decode, inst_decode);
         end
     end    

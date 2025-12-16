@@ -13,37 +13,27 @@ module fetch(
     );
 
 logic [31:0] pc; //to icache
-logic [31:0] nextpc;
 logic [31:0] inst; //from icache
 logic hold;
 
-assign hold = stall || (valid && !ready);
-
-always_comb begin
-    if (redirect) nextpc = redirect_pc;   
-    else nextpc = pc + 32'd4;
-end
+assign hold = stall || !ready;
 
 always_ff @(posedge clk) begin
     if(rst)begin
+        valid <= 0;
         pc <= 32'b0;
+    end else if (redirect) begin
+        valid <= 1'b1;
+        pc <= redirect_pc;
     end else if (!hold) begin
-        pc <= nextpc;
+        valid <= 1'b1;
+        pc <= pc + 32'd4;
     end
 end
 
-always_ff @(posedge clk) begin
-    if (rst) begin
-      valid       <= 1'b0;
-      pc_decode   <= '0;
-      inst_decode <= '0;
-    end else if (!hold) begin
-        valid <= 1'b1;
-        pc_decode <= pc;
-        inst_decode <= inst;
-    end
-    //else hold: do nothing, automatically retains previous values
-end
+assign pc_decode = pc;
+assign inst_decode = inst;
+
 
 icache u_icache( //I/O with icache
     //Output
