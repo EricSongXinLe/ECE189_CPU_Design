@@ -18,7 +18,7 @@ module dmem #(
     // 初始化内存
     // 注意：如果你有单独的数据文件，请将 "program.mem" 改为 "data.mem"
     // 修复：这里必须使用上面定义的 dmem 数组，而不是 iMEM
-    $readmemh("program.mem", dmem);
+    //$readmemh("program.mem", dmem);
     end
 
     // 同步读取 (BRAM 行为)
