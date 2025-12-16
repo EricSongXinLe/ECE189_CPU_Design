@@ -17,6 +17,7 @@ module lsu (
     output logic                mem_we,    
     output logic [31:0]         mem_addr,
     output logic [31:0]         mem_wdata,
+    output logic [3:0]          mem_wstrb,
     input  logic [31:0]         mem_rdata,
 
     // Writeback Interface
@@ -27,22 +28,41 @@ module lsu (
     logic [31:0] agu_addr;
     assign agu_addr = val1 + instr_in.immediate;
 
-    assign mem_en   = valid_in;
+    assign mem_en   = valid_in && !flush;
+    assign mem_we   = valid_in && instr_in.MemWrite && !flush;
     assign mem_addr = agu_addr;
-    assign mem_we   = valid_in && instr_in.MemWrite;
+
     
     initial $display("!!! LSU FIXED VERSION COMPILED !!!");
 
     // --- Shift Logic for Stores ---
+    // --- Store Data + Byte Enable (SB/SH/SW) ---
     always_comb begin
-        mem_wdata = val2; 
-        case (agu_addr[1:0])
-            2'b00: mem_wdata = val2;
-            2'b01: mem_wdata = val2 << 8;
-            2'b10: mem_wdata = val2 << 16;
-            2'b11: mem_wdata = val2 << 24;
-        endcase
+        mem_wdata = 32'b0;
+        mem_wstrb = 4'b0000;
+
+        if (valid_in && instr_in.MemWrite) begin
+            unique case (instr_in.funct3)
+                3'b000: begin // SB
+                    mem_wstrb = 4'b0001 << agu_addr[1:0];
+                    mem_wdata = val2 << (8 * agu_addr[1:0]);
+                end
+                3'b001: begin // SH
+                    mem_wstrb = 4'b0011 << (2 * agu_addr[1]);   // 00->0011, 10->1100
+                    mem_wdata = val2 << (16 * agu_addr[1]);
+                end
+                3'b010: begin // SW
+                    mem_wstrb = 4'b1111;
+                    mem_wdata = val2;
+                end
+                default: begin
+                    mem_wstrb = 4'b0000;
+                    mem_wdata = 32'b0;
+                end
+            endcase
+        end
     end
+
 
     // --- Pipeline Registers ---
     logic valid_s1;

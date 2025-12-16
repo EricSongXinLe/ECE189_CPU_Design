@@ -4,6 +4,7 @@ module dmem #(
     input  logic        clk,
     input  logic        en,
     input  logic        we, // Write Enable
+    input  logic [3:0]  wstrb,
     input  logic [31:0] addr,
     input  logic [31:0] wdata,
     output logic [31:0] data
@@ -23,16 +24,23 @@ module dmem #(
     // 同步读取 (BRAM 行为)
     always_ff @(posedge clk) begin
         if (en) begin
+            int unsigned idx;
+            logic [31:0] merged;
+
+            idx    = addr[11:2];
+            merged = dmem[idx];
+
             if (we) begin
-                // 写操作 (简化版：只支持按字写入，如果需要支持 SH/SB 需要掩码)
-                // 25swr.txt 里的 SH/SB 可能需要更复杂的逻辑，但先跑通 SW
-                $display("[DMEM] WRITE addr=%h (idx=%0d) val=%h", addr, addr[11:2], wdata);
-                dmem[addr[11:2]] <= wdata;
+                if (wstrb[0]) merged[7:0]   = wdata[7:0];
+                if (wstrb[1]) merged[15:8]  = wdata[15:8];
+                if (wstrb[2]) merged[23:16] = wdata[23:16];
+                if (wstrb[3]) merged[31:24] = wdata[31:24];
+
+                dmem[idx] <= merged;
+                data      <= merged; // write-first
+                $display("[DMEM] WRITE addr=%h (idx=%0d) wstrb=%b val=%h", addr, idx, wstrb, merged);
             end else begin
-                // 读操作
-                // data <= dmem[addr[31:2]];
-                dmem[addr[11:2]] <= dmem[addr[11:2]]; // 读保持/读出
-                data <= dmem[addr[11:2]];
+                data <= dmem[idx];
             end
         end
     end

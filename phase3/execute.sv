@@ -31,6 +31,7 @@ module execute (
     output logic [31:0]         dmem_addr,
     output logic [31:0]         dmem_wdata,
     input  logic [31:0]         dmem_rdata,
+    output logic [3:0] dmem_wstrb,
 
     // --- Writeback Outputs (CDBs) ---
     // Port 0: ALU, Port 1: LSU, Port 2: BRU
@@ -71,6 +72,7 @@ module execute (
         .mem_addr   (dmem_addr),
         .mem_wdata  (dmem_wdata),
         .mem_rdata  (dmem_rdata),
+        .mem_wstrb (dmem_wstrb),
         .valid_out  (wb_valid[1]),
         .wb_packet  (wb_packet[1])
     );

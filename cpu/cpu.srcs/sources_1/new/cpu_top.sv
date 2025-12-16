@@ -421,11 +421,13 @@ logic [31:0] dmem_addr;
 logic [31:0] dmem_rdata;
 logic        dmem_we;
 logic [31:0] dmem_wdata;
+logic [3:0] dmem_wstrb;
 //dMem instantiation
 dmem u_dmem (
     .clk(clk),
     .en(dmem_en),
     .we(dmem_we),
+    .wstrb (dmem_wstrb),
     .addr(dmem_addr),
     .wdata(dmem_wdata),
     .data(dmem_rdata)
@@ -463,6 +465,7 @@ execute u_execute (
     .dmem_addr(dmem_addr),
     .dmem_wdata(dmem_wdata),
     .dmem_rdata(dmem_rdata),
+    .dmem_wstrb (dmem_wstrb),
 
     // ---- CDB outputs ----
     .wb_valid(wb_valid),
