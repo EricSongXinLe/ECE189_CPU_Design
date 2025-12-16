@@ -26,11 +26,11 @@ module bru (
     logic taken;
     logic [31:0] calc_target;
     logic is_branch;
-    
+    logic is_jal;
     // Opcode Decoding
     assign is_branch = (instr_in.opcode == 7'h63); // BNE
     assign is_jalr   = (instr_in.opcode == 7'h67); // JALR
-
+    assign is_jal    = (instr_in.opcode == 7'h6f); // JAL (New)
     // 1. Direction Logic
     always_comb begin
         taken = 1'b0;
@@ -58,7 +58,7 @@ module bru (
     
     // Misprediction Logic:
     // Simple Model: Predict-Not-Taken. If branch is Taken, it's a mispredict.
-    assign mispredict = valid_in && is_branch && taken; 
+    assign mispredict = valid_in && ( (is_branch && taken) || is_jalr || is_jal );
 
     // 4. Pipeline Register (Writeback for Link Address)
     
