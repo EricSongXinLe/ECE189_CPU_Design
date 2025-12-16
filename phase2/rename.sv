@@ -165,11 +165,13 @@ module rename (
             rn_instr_comb.ps1_ready = src1_rdy_out;
         
         // Source 2
-        if (de_instr_in.rs2_addr == '0 || de_instr_in.ALUSrc) 
-            //x0, immediate(ALUSrc = 1)
+        if (de_instr_in.rs2_addr == '0 || (de_instr_in.ALUSrc && !de_instr_in.MemWrite)) begin
             rn_instr_comb.ps2_ready = 1'b1;
-        else 
+            // rn_instr_comb.ps2_addr  = '0; // Optional: clean up addr if not used
+        end else begin
             rn_instr_comb.ps2_ready = src2_rdy_out;
+            // ps2_addr is already assigned from map_table above
+        end
 
         // --- 2. Allocate destination register ---
         if (need_free_reg) begin
