@@ -5,13 +5,16 @@ typedef struct packed {
     logic [6:0] prd_addr; 
     logic [6:0] old_prd_addr;
     logic [31:0] pc;
+
+    logic is_store;                         // NEW
+    logic [ROB_IDX_WIDTH-1:0] sq_idx;
+    
     logic is_branch;
     logic [ROB_IDX_WIDTH-1:0] recovery_ptr; //if is_branch, store the rob_idx at that point
     logic [ROB_IDX_WIDTH-1:0] rob_idx;
     logic mispredict;
     logic [31:0] branch_target;
 } rob_entry;
-
 
 
 module ROB #(

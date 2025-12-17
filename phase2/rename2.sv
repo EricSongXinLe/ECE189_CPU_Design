@@ -45,12 +45,15 @@ logic [ROB_IDX_WIDTH-1:0] rob_tag_checkpoint;
             // --- Pass-through other signals ---
             rn_instr_out.pc         = de_instr_in.pc;
             rn_instr_out.immediate  = de_instr_in.immediate;
+            rn_instr_out.uses_rd    = de_instr_in.uses_rd;
             rn_instr_out.RegWrite   = de_instr_in.RegWrite;
             rn_instr_out.MemRead    = de_instr_in.MemRead;
             rn_instr_out.MemWrite   = de_instr_in.MemWrite;
             rn_instr_out.MemToReg   = de_instr_in.MemToReg;
             rn_instr_out.ALUSrc     = de_instr_in.ALUSrc;
             rn_instr_out.is_branch  = de_instr_in.is_branch;
+            rn_instr_out.is_jalr    = de_instr_in.is_jalr;
+            rn_instr_out.is_store   = de_instr_in.is_store;
             rn_instr_out.ALUOp      = de_instr_in.ALUOp;
             rn_instr_out.funct7     = de_instr_in.funct7;
             rn_instr_out.funct3     = de_instr_in.funct3;

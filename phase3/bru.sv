@@ -8,7 +8,7 @@ module bru (
 
     // Issue Interface
     input  logic                valid_in,
-    input  rename_to_dispatch_t instr_in,
+    input  dispatch_to_rs_t instr_in,
     input  logic [31:0]         val1,
     input  logic [31:0]         val2,
 
@@ -28,37 +28,44 @@ module bru (
     logic is_branch;
     
     // Opcode Decoding
-    assign is_branch = (instr_in.opcode == 7'h63); // BNE
-    assign is_jalr   = (instr_in.opcode == 7'h67); // JALR
+    assign is_branch = valid_in && instr_in.is_branch; // BNE
+    assign is_jalr   = valid_in && instr_in.is_jalr; // JALR
 
     // 1. Direction Logic
     always_comb begin
         taken = 1'b0;
-        if (is_branch) begin
-            taken = (val1 != val2);
-        end else if (is_jalr) begin
-            taken = 1'b1; // Unconditional jumps are always taken
+        if (valid_in) begin
+            if (is_branch && (instr_in.funct3==3'b001)) begin
+                taken = (val1 != val2);
+            end else if (is_jalr) begin
+                taken = 1'b1; // Unconditional jumps are always taken
+            end
         end
     end
 
     // 2. Target Calculation
     always_comb begin
-        if (is_jalr) 
-            // JALR: (rs1 + offset) & ~1
-            calc_target = (val1 + instr_in.immediate) & ~32'd1;
-        else 
-            // B-type and JAL: PC + offset
-            calc_target = instr_in.pc + instr_in.immediate;
+        if (valid_in) begin
+            if (is_jalr) 
+                // JALR: (rs1 + offset) & ~1
+                calc_target = (val1 + instr_in.immediate) & ~32'd1;
+            else if (is_branch)
+                // B-type: PC + offset
+                calc_target = instr_in.pc + instr_in.immediate;
+            else
+                calc_target = instr_in.pc + 32'd4;
+        end
+        else calc_target = '0;
     end
 
     // 3. Output Logic (Combinational)
     // We output these immediately so the Fetch Unit/ROB sees them in the same cycle as Execute
     assign target_pc  = calc_target;
-    assign rob_tag    = instr_in.rob_tag;
+    assign rob_tag = valid_in ? instr_in.rob_tag : '0;
     
     // Misprediction Logic:
     // Simple Model: Predict-Not-Taken. If branch is Taken, it's a mispredict.
-    assign mispredict = valid_in && is_branch && taken; 
+    assign mispredict = valid_in && (is_branch || is_jalr) && taken; 
 
     // 4. Pipeline Register (Writeback for Link Address)
     always_ff @(posedge clk) begin
@@ -66,8 +73,7 @@ module bru (
             valid_out <= 1'b0;
             wb_packet <= '0;
         end else begin
-            valid_out <= valid_in;
-            
+            valid_out <= valid_in && instr_in.uses_rd && (instr_in.prd_addr != '0);
             // Writeback logic
             wb_packet.prd_addr <= instr_in.prd_addr;
             wb_packet.rob_tag <= instr_in.rob_tag;

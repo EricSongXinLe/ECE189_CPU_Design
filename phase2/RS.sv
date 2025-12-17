@@ -16,8 +16,8 @@ module RS #(
 
     // --- Writeback/CDB Interface (Wakeup) ---
     // We snoop these signals to update op1_ready/op2_ready
-    input  logic                wb_valid [CDB_WIDTH],
-    input  fu_to_prf_t          wb_packet [CDB_WIDTH],
+    input  logic [CDB_WIDTH-1:0]   wb_valid,
+    input  fu_to_prf_t [CDB_WIDTH-1:0] wb_packet,
 
     // --- Issue Interface (Select) ---
     // Sent to Functional Unit / PRF Read Ports

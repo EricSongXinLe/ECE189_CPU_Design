@@ -90,7 +90,8 @@ module decode(
             next_signals.ALUOp    = 2'b00;
             next_signals.FU_type  = 2'b10;
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
-
+            next_signals.is_store = 1'b1;
+            
             next_signals.uses_rs1 = 1'b1;      // base
             next_signals.uses_rs2 = 1'b1;      // store data
             next_signals.uses_rd  = 1'b0;

@@ -59,6 +59,7 @@ typedef struct packed {
     logic        ALUSrc;
     logic        is_branch;  // This is a branch (for checkpointing)
     logic        is_jalr;
+    logic        is_store;
     logic [1:0]  ALUOp;
     
     // Pass-throughs
@@ -96,6 +97,7 @@ typedef struct packed {
     logic        ALUSrc;
     logic        is_branch;
     logic        is_jalr;
+    logic        is_store;
     logic [1:0]  ALUOp;
     logic [6:0]  funct7;
     logic [2:0]  funct3;
@@ -134,9 +136,12 @@ typedef struct packed {
     
     // ROB tag for this instruction
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
+    logic [ROB_IDX_WIDTH-1:0] sq_idx;
     
     // Pass-through all other control signals
     logic uses_rd;
+    logic        is_store;
+    logic        is_jalr;
     logic        MemRead;
     logic        MemWrite;
     logic        ALUSrc;
@@ -159,8 +164,12 @@ typedef struct packed {
     
     // ROB tag for this instruction
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
+    logic [ROB_IDX_WIDTH-1:0] sq_idx;
+
     
     logic        is_branch;
+    logic is_jalr;
+    logic is_store;
 } dispatch_to_rob_t;
 
 typedef struct packed {
@@ -176,5 +185,16 @@ typedef struct packed {
     logic [31:0] branch_target;
 }
 rob_commit_t;
+
+typedef struct packed {
+    logic valid;
+    logic [ROB_IDX_WIDTH-1:0] rob_tag;
+    logic [31:0] addr;
+    logic addr_ready;
+    logic [PREG_W-1:0] data_ps;
+    logic [31:0] data;
+    logic data_ready;
+    logic [2:0] funct3;
+} sq_t
 
 `endif

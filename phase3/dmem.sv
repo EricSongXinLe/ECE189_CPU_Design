@@ -9,7 +9,7 @@ module dmem #(
 
     logic [31:0] dmem[0:BLOCK_SIZE-1];
 
-    initial $readmemh("program.mem", iMEM);
+    initial $readmemh("program.mem", dmem);
 
     always_ff @(posedge clk) begin
         if (en) inst <= dmem[pc[31:2]]; 
