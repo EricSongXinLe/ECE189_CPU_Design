@@ -24,6 +24,7 @@ module ROB #(
     input logic dp_valid,
 
     input logic flush,
+    input logic wb_is_branch,
     input fu_to_rob_t fu_wb,
 
     input logic [2:0] wb_valid,
@@ -53,27 +54,28 @@ always_ff @(posedge clk) begin
     end
 
     else begin
-        rob_head_in.valid <= 1'b0;
+        rob_head_in <= '0;
         for (int i = 0; i < 3; i++) begin
             if (wb_valid[i]) begin
                 ROB[ wb_packet[i].rob_tag ].complete <= 1'b1;
             end
         end
-        if (flush) begin //flush
-            ROB[fu_wb.rob_tag].complete <= 1'b1;
+        if (wb_is_branch) begin //flush
+            
             ROB[fu_wb.rob_tag].mispredict <= fu_wb.mispredict;
             ROB[fu_wb.rob_tag].branch_target <= fu_wb.branch_target;
 
+        end
+
+        if (flush) begin
             for (i=0; i < ROB_SIZE; i=i+1) begin
-                if (i > fu_wb.rob_tag) begin
-                    ROB[i] <='0;
-                end
+                ROB[i]   <= 1'b0;
             end
             
-            tail <= fu_wb.rob_tag + 1'b1;
+            tail <= head;
         end
         //fill in data from rename
-        if(dp_valid && !rob_full) begin
+        if(dp_valid && !rob_full && !flush) begin
             ROB[tail].valid <= 1'b1;
             ROB[tail].complete <= 1'b0;
             ROB[tail].isBusy <= 1'b1;
@@ -96,7 +98,7 @@ always_ff @(posedge clk) begin
         
             tail <= (tail==ROB_SIZE-1) ? 0 : tail + 4'd1;
         end
-        if (ROB[head].valid && ROB[head].complete) begin
+        if (ROB[head].valid && ROB[head].complete && !flush) begin
             `ifndef SYNTHESIS
             $display("[COMMIT] t=%0t head=%0d pc=%h prd=%0d old_prd=%0d is_branch=%0d mispred=%0d",
                      $time, head, ROB[head].pc, ROB[head].prd_addr, ROB[head].old_prd_addr,

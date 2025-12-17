@@ -9,7 +9,7 @@ module RS #(
 )(
     input logic clk,
     input logic rst,
-
+    input logic flush,
     // --- 来自全局 scoreboard 的 busy_table ---
     // busy_table[preg_id] == 1 表示这个物理寄存器还在等待写回
     input  logic [(1<<PREG_ID_WIDTH)-1:0] busy_table,
@@ -85,7 +85,7 @@ module RS #(
             end
 
             // ---- 源操作数 2：ALUSrc(立即数) / x0 / scoreboard 不 busy => ready ----
-            if (rs_array[i].instr.ALUSrc || rs_array[i].instr.ps2_addr == '0) begin
+            if ((rs_array[i].instr.ALUSrc && !rs_array[i].instr.MemWrite) || rs_array[i].instr.ps2_addr == '0) begin
                 next_op2_ready[i] = 1'b1;
             end else if (!busy_table[ rs_array[i].instr.ps2_addr ]) begin
                 next_op2_ready[i] = 1'b1;
@@ -96,7 +96,7 @@ module RS #(
                 if (wb_valid[k] && wb_packet[k].prd_addr != '0) begin
                     if (rs_array[i].instr.ps1_addr == wb_packet[k].prd_addr)
                         next_op1_ready[i] = 1'b1;
-                    if (!rs_array[i].instr.ALUSrc &&
+                    if ((!rs_array[i].instr.ALUSrc || rs_array[i].instr.MemWrite)&&
                         rs_array[i].instr.ps2_addr == wb_packet[k].prd_addr)
                         next_op2_ready[i] = 1'b1;
                 end
@@ -138,7 +138,7 @@ module RS #(
         else
             op1_alloc_ready = !busy_table[ dp_instr.ps1_addr ];
 
-        if (dp_instr.ALUSrc || dp_instr.ps2_addr == '0)
+        if ((dp_instr.ALUSrc && !dp_instr.MemWrite) || dp_instr.ps2_addr == '0)
             op2_alloc_ready = 1'b1;
         else
             op2_alloc_ready = !busy_table[ dp_instr.ps2_addr ];
@@ -148,14 +148,14 @@ module RS #(
             if (wb_valid[k] && wb_packet[k].prd_addr != '0) begin
                 if (dp_instr.ps1_addr == wb_packet[k].prd_addr)
                     op1_alloc_ready = 1'b1;
-                if (!dp_instr.ALUSrc && dp_instr.ps2_addr == wb_packet[k].prd_addr)
+                if ((!dp_instr.ALUSrc || dp_instr.MemWrite) && dp_instr.ps2_addr == wb_packet[k].prd_addr)
                     op2_alloc_ready = 1'b1;
             end
         end
     end
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        if (rst || flush) begin
             for (int i = 0; i < RS_SIZE; i++) begin
                 rs_array[i].valid              <= 1'b0;
                 rs_array[i].instr              <= '0;

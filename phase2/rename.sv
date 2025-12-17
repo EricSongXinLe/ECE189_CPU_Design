@@ -81,7 +81,7 @@ module rename (
     // Logic for stalling
     logic [4:0] actual_rd_addr;
     logic need_free_reg;
-    assign actual_rd_addr = (de_instr_in.is_branch || de_instr_in.MemWrite) ? 5'b0 : de_instr_in.rd_addr;
+    assign actual_rd_addr = de_instr_in.rd_addr;;
 
     assign need_free_reg = de_instr_in.RegWrite && (actual_rd_addr != '0);
     
@@ -330,4 +330,10 @@ always_ff @(posedge clk) begin
     end
 end
 
+always_ff @(posedge clk) begin
+    if (do_rename && de_instr_in.rd_addr == 29)
+        $display("Map Table [29] updating to %d", rn_instr_comb.prd_addr);
+    if (do_rename && de_instr_in.rs1_addr == 29)
+        $display("Instruction reading x29 mapped to %d", map_table[29]);
+end
 endmodule

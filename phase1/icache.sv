@@ -34,9 +34,7 @@ module icache #(
     // Initialize instruction memory from file
     initial $readmemh("program.mem", iMEM);
 
-    // Synchronous BRAM-style read (1-cycle latency)
-    always_ff @(posedge clk) begin
-        inst <= iMEM[pc[31:2]]; 
-    end
+    // Remove always_ff, use assign
+    assign inst = iMEM[pc[31:2]];
 
 endmodule

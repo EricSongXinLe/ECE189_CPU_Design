@@ -3,7 +3,7 @@ module skid_buffer_struct #(
 ) (
     input  logic clk,
     input  logic reset,
-
+    input  logic flush,
     // upstream (producer -> skid)
     input  logic valid_in,
     output logic ready_out,
@@ -29,7 +29,7 @@ module skid_buffer_struct #(
 
     // Skid register control (synchronous active-high reset)
     always_ff @(posedge clk) begin
-        if (reset) begin
+        if (reset || flush) begin
             skid_valid <= 1'b0;
             skid_data  <= '0;
         end else begin

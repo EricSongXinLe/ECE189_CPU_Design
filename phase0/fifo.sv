@@ -7,7 +7,7 @@ module fifo_pipeline #(
     parameter FIFO_WIDTH = $clog2(DEPTH)
 ) ( input logic clk, 
     input logic reset, 
-
+    input logic flush,
     input logic valid_in, 
     output logic ready_out,
     input T write_data,
@@ -38,14 +38,14 @@ assign read_en = valid_out&&ready_in;
 assign read_data = Arr[r_ptr];
 
 always_ff @ (posedge clk) begin
-    if (reset) begin
+    if (reset || flush) begin
         for (i = 0; i<DEPTH; i=i+1) begin
             Arr[i] <= '0;
     end
     w_ptr <= '0;
     r_ptr <= '0;
     end
-
+    else begin
     if (read_en && (!empty)) begin
         r_ptr <= (r_ptr==DEPTH-1)? 0 : r_ptr + 1;
     end
@@ -54,6 +54,7 @@ always_ff @ (posedge clk) begin
         w_ptr <= (w_ptr==DEPTH-1)? 0 : w_ptr + 1;
 
     end
+end
 end
 endmodule
 

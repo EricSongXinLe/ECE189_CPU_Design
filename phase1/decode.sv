@@ -48,85 +48,117 @@ module decode(
 
 // 在 decode 模块的 always_comb 中
 always_comb begin
-    // --- Default Control Signal Values (safe state) ---
+    // --- Default Control Signal Values (Safe State) ---
     next_signals = '0;
     next_signals.pc = fe_pc;
-    next_signals.rs1_addr = rs1;
+    // 默认连接指令中的 rs1/rs2/rd 字段
+    next_signals.rs1_addr = rs1; 
     next_signals.rs2_addr = rs2;
-    next_signals.rd_addr = rd;  // 默认
+    next_signals.rd_addr  = rd; 
     next_signals.funct3 = funct3;
     next_signals.funct7 = funct7;
     next_signals.opcode = opcode;
-    next_signals.FU_type = 2'b11; // no op
-    
-    // --- Main Control & Immediate Generation ---
+    next_signals.FU_type = 2'b11; // 默认 invalid/nop
+
     case (opcode)
-        // R-type (ADD, SUB, SRA, AND)
-        'h33: begin // 0b0110011
+        // R-type (ADD, SUB, etc.)
+        'h33: begin 
             next_signals.RegWrite = 1'b1;
             next_signals.ALUOp    = 2'b10;
-            next_signals.FU_type = 2'b00;
+            next_signals.FU_type  = 2'b00; // ALU
         end
 
-        // I-type (ALU: ADDI, SLTIU, ORI)
-        'h13: begin // 0b0010011
+        // I-type (ADDI, etc.)
+        'h13: begin 
             next_signals.RegWrite = 1'b1;
             next_signals.ALUSrc   = 1'b1;
-            next_signals.ALUOp    = 2'b11;
-            next_signals.FU_type = 2'b00;
+            next_signals.ALUOp    = 2'b11; 
+            next_signals.FU_type  = 2'b00; // ALU
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
         end
 
-        // I-type (Load: LW, LBU)
-        'h03: begin // 0b0000011
+        // I-type (Load)
+        'h03: begin 
             next_signals.RegWrite = 1'b1;
             next_signals.MemRead  = 1'b1;
             next_signals.MemToReg = 1'b1;
             next_signals.ALUSrc   = 1'b1;
-            next_signals.ALUOp    = 2'b00;
-            next_signals.FU_type  = 2'b10;
+            next_signals.ALUOp    = 2'b00; // ADD (base + offset)
+            next_signals.FU_type  = 2'b10; // LSU
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
         end
 
-        // S-type (Store: SW, SH)
-        'h23: begin // 0b0100011
+        // S-type (Store)
+        'h23: begin 
             next_signals.MemWrite = 1'b1;
             next_signals.ALUSrc   = 1'b1;
-            next_signals.ALUOp    = 2'b00;
-            next_signals.FU_type  = 2'b10;
+            next_signals.ALUOp    = 2'b00; // ADD (base + offset)
+            next_signals.FU_type  = 2'b10; // LSU
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:25], fe_instr[11:7]};
-            next_signals.rd_addr = 5'b0;  // 关键修复：存储指令不写寄存器
+            
+            // 安全强制：Store 不写回寄存器
+            next_signals.RegWrite = 1'b0; 
+            next_signals.rd_addr  = 5'b0; 
         end
 
-        // B-type (Branch: BNE)
-        'h63: begin // 0b1100011
+        // B-type (Branch)
+        'h63: begin 
             next_signals.is_branch = 1'b1;
-            next_signals.ALUOp  = 2'b01;
-            next_signals.FU_type  = 2'b01;
+            next_signals.ALUOp     = 2'b01;
+            next_signals.FU_type   = 2'b01; // BRU
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[7], fe_instr[30:25], fe_instr[11:8], 1'b0};
-            next_signals.rd_addr = 5'b0;  // 关键修复：分支指令不写寄存器
+            
+            // 安全强制：Branch 不写回寄存器
+            next_signals.RegWrite = 1'b0;
+            next_signals.rd_addr  = 5'b0; 
         end
 
         // I-type (JALR)
-        'h67: begin // 0b1100111
-            next_signals.RegWrite = 1'b1;
-            next_signals.ALUSrc   = 1'b1;
-            next_signals.ALUOp    = 2'b00;
-            next_signals.FU_type  = 2'b01;
+        'h67: begin 
+            next_signals.RegWrite  = 1'b1;
+            next_signals.ALUSrc    = 1'b1; // Use Imm
+            next_signals.ALUOp     = 2'b00; // ADD (rs1 + imm)
+            next_signals.FU_type   = 2'b01; // BRU handles jumps
+            next_signals.is_branch = 1'b1;
             next_signals.immediate = {{20{fe_instr[31]}}, fe_instr[31:20]};
         end
 
+        // J-type (JAL) - ★ 你缺失的部分 ★
+        'h6f: begin 
+            next_signals.RegWrite  = 1'b1;
+            next_signals.ALUSrc    = 1'b1; // PC + 4 (handled in BRU/Execute)
+            next_signals.FU_type   = 2'b01; // BRU
+            next_signals.is_branch = 1'b1;
+            // J-immediate decoding
+            next_signals.immediate = {{12{fe_instr[31]}}, fe_instr[19:12], fe_instr[20], fe_instr[30:21], 1'b0};
+        end
+
         // U-type (LUI)
-        'h37: begin // 0b0110111
+        'h37: begin 
+            next_signals.RegWrite = 1'b1;
+            next_signals.ALUSrc   = 1'b1;
+            next_signals.ALUOp    = 2'b00; // ADD
+            next_signals.FU_type  = 2'b00; // ALU
+            next_signals.immediate = {fe_instr[31:12], 12'h000};
+            
+            // ★ 关键修复：强制 rs1 为 x0，确保 ALU 计算 0 + imm ★
+            next_signals.rs1_addr = 5'b0; 
+            next_signals.rs1_addr = 5'b0; // NEWLY ADDED
+        end
+        
+        // U-type (AUIPC) - 建议加上
+        'h17: begin
             next_signals.RegWrite = 1'b1;
             next_signals.ALUSrc   = 1'b1;
             next_signals.FU_type  = 2'b00;
             next_signals.immediate = {fe_instr[31:12], 12'h000};
+            // AUIPC 需要 PC + Imm。如果你的 ALU 不支持直接读 PC，这需要特殊处理。
+            // 暂时假设你的 ALUOp=ADD 可以处理，或者你后续有 PC 通路。
         end
-        
+
         default: begin
-            // Default case: treat as NOP
-            next_signals.rd_addr = 5'b0;  // 安全起见
+            next_signals.rd_addr = 5'b0;
+            next_signals.RegWrite = 1'b0;
         end
     endcase
 end
