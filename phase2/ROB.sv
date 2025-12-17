@@ -12,13 +12,7 @@ typedef struct packed {
     logic [31:0] branch_target;
 } rob_entry;
 
-typedef struct packed {
-    logic commit_valid;
-    logic [ROB_IDX_WIDTH-1:0] commit_idx;
-    logic mispredict;
-    logic [31:0] branch_target;
-}
-rob_commit_t;
+
 
 module ROB #(
     parameter ROB_SIZE = 16,

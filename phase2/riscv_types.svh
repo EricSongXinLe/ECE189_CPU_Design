@@ -88,6 +88,7 @@ typedef struct packed {
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
     
     // Pass-through all other control signals
+    logic uses_rd;
     logic        RegWrite;
     logic        MemRead;
     logic        MemWrite;
@@ -135,6 +136,7 @@ typedef struct packed {
     logic [ROB_IDX_WIDTH-1:0] rob_tag;
     
     // Pass-through all other control signals
+    logic uses_rd;
     logic        MemRead;
     logic        MemWrite;
     logic        ALUSrc;
