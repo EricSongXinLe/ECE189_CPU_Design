@@ -111,7 +111,7 @@ module RS_ORDERED #(
     end
 
     always_ff @(posedge clk) begin
-        if (rst || flush) begin
+        if (rst) begin
             head  <= '0;
             tail  <= '0;
             count <= '0;
