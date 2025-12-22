@@ -146,6 +146,9 @@ logic rs_lsu_full;
 logic rs_lsu_valid;
 dispatch_to_rs_t rs_lsu_instr;
 
+logic [2:0] wb_valid;
+fu_to_prf_t [2:0] wb_packet;
+
 dispatch u_dispatch (
     .clk(clk),
     .rst(rst),
@@ -170,12 +173,13 @@ dispatch u_dispatch (
 
     .rs_lsu_full(rs_lsu_full),
     .rs_lsu_valid(rs_lsu_valid),
-    .rs_lsu_instr(rs_lsu_instr)
+    .rs_lsu_instr(rs_lsu_instr),
+
+    .wb_valid(wb_valid),     
+    .wb_packet(wb_packet)
 );
 
 // ====== ROB =========
-logic  wb_valid [3];
-fu_to_prf_t wb_packet [3];
 logic flush;
 fu_to_rob_t fu_wb;
 rob_commit_t rob_commit;

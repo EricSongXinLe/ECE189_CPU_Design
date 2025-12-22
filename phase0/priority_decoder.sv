@@ -27,20 +27,20 @@ module priority_decoder #(
     output logic                      valid
 );
 
-    //combinational block.
-    always_comb begin
-        // By default, assume no bits are set.
-        valid = 1'b0; 
-        out = '0;     // Output 0 when not valid.
-        // Iterate from the highest priority bit (MSB) down to the LSB.
-        for (int i = WIDTH - 1; i >= 0; i--) begin
-            if (in[i]) begin
-                // Found the first '1' (which is the highest priority one).
-                out = i;       // Assign its index to the output.
-                valid = 1'b1;  // Signal that the output is valid.
-                break;         // Stop searching.
-            end
+//combinational block.
+always_comb begin
+    // By default, assume no bits are set.
+    valid = 1'b0; 
+    out = '0;     // Output 0 when not valid.
+    // Iterate from the highest priority bit (MSB) down to the LSB.
+    for (int i = WIDTH - 1; i >= 0; i--) begin
+        if (in[i]) begin
+            // Found the first '1' (which is the highest priority one).
+            out = i;       // Assign its index to the output.
+            valid = 1'b1;  // Signal that the output is valid.
+            break;         // Stop searching.
         end
     end
+end
 
 endmodule

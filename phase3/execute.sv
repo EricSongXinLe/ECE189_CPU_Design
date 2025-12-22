@@ -9,19 +9,19 @@ module execute (
     // --- Inputs from Issue Stage (RS + PRF) ---
     // Port 0: ALU
     input  logic                alu_issue_valid,
-    input  dispatch_to_rs_t alu_issue_instr,
+    input  dispatch_to_rs_t     alu_issue_instr,
     input  logic [31:0]         alu_val1,
     input  logic [31:0]         alu_val2,
 
     // Port 1: BRU
     input  logic                bru_issue_valid,
-    input  dispatch_to_rs_t bru_issue_instr,
+    input  dispatch_to_rs_t     bru_issue_instr,
     input  logic [31:0]         bru_val1,
     input  logic [31:0]         bru_val2,
 
     // Port 2: LSU
     input  logic                lsu_issue_valid,
-    input  dispatch_to_rs_t lsu_issue_instr,
+    input  dispatch_to_rs_t     lsu_issue_instr,
     input  logic [31:0]         lsu_val1,
     input  logic [31:0]         lsu_val2,
 
